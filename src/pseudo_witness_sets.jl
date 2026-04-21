@@ -1,15 +1,15 @@
 export PseudoWitnessSet, degree, total_dim, system, witness_points
-struct Line 
-    p::Vector
-    b::Vector 
+struct Line{T<:Number}
+    p::Vector{T}
+    b::Vector{T}
 end
 
-struct PseudoWitnessSet
-    F::System
+struct PseudoWitnessSet{TF<:System,T<:Number,TT}
+    F::TF
     k::Int
-    L::Line
-    Wt::Vector
-    tracker::EndgameTracker
+    L::Line{T}
+    Wt::Vector{Vector{ComplexF64}}
+    tracker::TT
     track_report::Vector{Bool}
 end
 degree(PWS::PseudoWitnessSet) = length(PWS.Wt)
@@ -73,17 +73,24 @@ function PseudoWitnessSet(
     tracker = Tracker(ParameterHomotopy(F_L, L.p, L.p))
     track_report = zeros(Bool, length(solutions(M))) # for keeping track of which paths are successful
 
-    PseudoWitnessSet(F, k, L, Wt, EndgameTracker(tracker), track_report)
+    PseudoWitnessSet{typeof(F),ComplexF64,typeof(EndgameTracker(tracker))}(
+        F,
+        k,
+        L,
+        Wt,
+        EndgameTracker(tracker),
+        track_report,
+    )
 end
 
 witness_points(PWS::PseudoWitnessSet) = [w[1:end-1] for w in PWS.Wt]
 
-function track!(u::Vector, PWS::PseudoWitnessSet, p)
+function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
     tracker = PWS.tracker
     target_parameters!(tracker, p)
     for (l, w) in enumerate(PWS.Wt)
             HC.track!(tracker, w, 1)
-            u[l] .= tracker.tracker.state.x
+            copyto!(u[l], tracker.tracker.state.x)
             PWS.track_report[l] = all(isfinite, u[l]) # note if the track was successful or not
     end
 
