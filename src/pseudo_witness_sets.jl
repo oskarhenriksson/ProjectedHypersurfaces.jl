@@ -36,7 +36,7 @@ function PseudoWitnessSet(
     F::System,
     k::Int;
     L::Union{Line, Nothing} = nothing,
-    start_system::Symbol = :polyhedral,
+    start_system::Symbol = :total_degree,
     compile::Union{Bool,Symbol} = :mixed 
 )
  
@@ -44,11 +44,18 @@ function PseudoWitnessSet(
         L = Line(randn(ComplexF64, k), randn(ComplexF64, k))
     end
     
+    # restricting F to a line
+    F_L = RestrictionToLineSystem(F, L.b, k; compile = compile)
+
     # Intersect with random linear subspace
-    F_L = RestrictionToLineSystem(F, b, k; compile = compile)
+    # we want to use G = [F.expressions; p + t .* L.b - v[1:k]] instead of F_L to be able to use polyhedral/total_degree
+    v = variables(F)
+    p = F_L.parameters
+    t = F_L.t
+    G = System([F.expressions; p + t .* L.b - v[1:k]], variables = [t; v], parameters = p)
 
     # Trace the nonsingular solutions 
-    E = HC.solve(F_L; start_system = start_system,
+    E = HC.solve(G; start_system = start_system,
                     target_parameters = L.p)
 
      # Check for singular solutions
@@ -57,10 +64,12 @@ function PseudoWitnessSet(
     end
 
     # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
-    M = monodromy_solve(F_L, solutions(E), L.p)
-    Wt = solutions(M)
+    M = monodromy_solve(G, solutions(E), L.p)
+    n = length(v)
+    Wt = map(s -> ComplexF64[s[1]; s[(k+2):end]], solutions(M))
 
     # Set up tracker 
+    
     tracker = Tracker(ParameterHomotopy(F_L, L.p, L.p))
     track_report = zeros(Bool, length(solutions(M))) # for keeping track of which paths are successful
 
@@ -90,15 +99,12 @@ function get_s_and_Uvals!(Uvals, S, GC, PWS)
         !PWS.track_report[j] && continue # skip if j-th track failed
         @assert all(!isnan, sol) "NaN entries in intersection points: $sol"
 
-        S[j] = 1 / sol[end] # We need S[j] = s = 1 / t, where t = sol[end]
+        S[j] = 1 / sol[1] # We need S[j] = s = 1 / t, where t = sol[1]
 
          for idx in 1:n-k
-            Uvals[idx, j] = sol[idx+k] 
+            Uvals[idx, j] = sol[idx+1] 
         end
     end
 
     nothing
 end
-
-
-

@@ -92,7 +92,7 @@ function GradientCache(PWS)
 
     @assert N == n-k+1 "Unexpected length of system"
 
-    line_hypersurface_intersections = [zeros(ComplexF64, n + 1) for _ in 1:d]
+    line_hypersurface_intersections = [zeros(ComplexF64, n - k + 1) for _ in 1:d]
   
     @unique_var t, p[1:k]
 

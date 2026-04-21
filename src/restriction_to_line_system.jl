@@ -88,7 +88,7 @@ end
 Base.size(F::RestrictionToLineSystem) = (size(F.system, 1), size(F.system, 2) - F.k + 1)
 ModelKit.variables(F::RestrictionToLineSystem) = [F.t; variables(F.system)[(F.k+1):end]]
 ModelKit.parameters(F::RestrictionToLineSystem) = F.parameters
-ModelKit.variable_groups(F::RestrictionToLineSystem) = (variables(F),)
+ModelKit.variable_groups(F::RestrictionToLineSystem) = nothing
 
 function (F::RestrictionToLineSystem)(x, p)
     length(x) == size(F, 2) || throw(ArgumentError("Expected $(size(F, 2)) variables."))
@@ -147,6 +147,27 @@ function ModelKit.evaluate_and_jacobian!(u, U, F::RestrictionToLineSystem, x, p)
     end
 
     nothing
+end
+
+function ModelKit.taylor!(
+    u::AbstractVector,
+    ::Val{1},
+    F::RestrictionToLineSystem,
+    x::AbstractVector,
+    p::TaylorVector,
+)
+    _set_restricted_vector!(F.v, F, x, first.(p))
+    evaluate_and_jacobian!(F.u, F.J, F.system, F.v)
+
+    @inbounds for i = 1:size(F.system, 1)
+        ui = zero(eltype(u))
+        for j = 1:F.k
+            ui += F.J[i, j] * p[j][1]
+        end
+        u[i] = ui
+    end
+
+    u
 end
 
 _taylor_tv(F::RestrictionToLineSystem, ::Val{1}) = F.tv¹
