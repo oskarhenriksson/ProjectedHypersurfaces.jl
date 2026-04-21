@@ -1,5 +1,8 @@
 export RestrictionToLineSystem
 
+# Specialized `AbstractSystem` for the substitution x = [p + t * direction; w].
+# This mirrors the evaluation/Jacobian/Taylor structure of HC's IntrinsicSubspaceHomotopy,
+# but only the base point p moves while the line direction stays fixed.
 """
     RestrictionToLineSystem(F::AbstractSystem, direction, k)
 
@@ -99,6 +102,7 @@ function (F::RestrictionToLineSystem)(x, p)
     F.system([v; w])
 end
 
+# Cache the ambient point [p + t * direction; w] before delegating to the compiled system.
 @inline function _set_restricted_vector!(
     v::AbstractVector,
     F::RestrictionToLineSystem,
@@ -133,6 +137,7 @@ function ModelKit.evaluate_and_jacobian!(u, U, F::RestrictionToLineSystem, x, p)
     _set_restricted_vector!(F.v, F, x, p)
     evaluate_and_jacobian!(u, F.J, F.system, F.v)
 
+    # Apply the chain rule for the affine restriction map [t; w] -> [p + t * direction; w].
     n = size(F.system, 1)
     wdim = size(F.system, 2) - F.k
     @inbounds for i = 1:n
@@ -206,6 +211,7 @@ function _set_restricted_taylor!(
     z = vectors(tv_out)
     x = vectors(tx)
 
+    # Assemble Taylor coefficients of the restricted ambient point coefficient-wise.
     for j = 1:M
         zj = z[j]
         @inbounds for i = 1:F.k

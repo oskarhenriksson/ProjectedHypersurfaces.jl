@@ -44,7 +44,7 @@ function PseudoWitnessSet(
         L = Line(randn(ComplexF64, k), randn(ComplexF64, k))
     end
     
-    # restricting F to a line
+    # Restrict the ambient system to F([p + t * L.b; w]) so ParameterHomotopy can move p for us.
     F_L = RestrictionToLineSystem(F, L.b, k; compile = compile)
 
     # Intersect with random linear subspace
@@ -66,6 +66,7 @@ function PseudoWitnessSet(
     # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
     M = monodromy_solve(G, solutions(E), L.p)
     n = length(v)
+    # Keep only the restricted coordinates [t; w] needed by the restricted tracker.
     Wt = map(s -> ComplexF64[s[1]; s[(k+2):end]], solutions(M))
 
     # Set up tracker 
@@ -88,6 +89,7 @@ witness_points(PWS::PseudoWitnessSet) = [w[1:end-1] for w in PWS.Wt]
 function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
     tracker = PWS.tracker
     target_parameters!(tracker, p)
+    # Reuse one tracker instance and update its target parameters in place.
     for (l, w) in enumerate(PWS.Wt)
             HC.track!(tracker, w, 1)
             copyto!(u[l], tracker.tracker.state.x)

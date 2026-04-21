@@ -1,3 +1,5 @@
+# Cache one fully tracked state for a target parameter p, including the cheap postprocessing
+# that extracts s = 1 / t and the residual coordinates uval.
 struct TrackStateCacheEntry{T}
     p::Vector{T}
     intersections::Vector{Vector{T}}
@@ -9,6 +11,7 @@ end
 mutable struct GradientCache{T,TC}
     v0::Vector{T}
     line_hypersurface_intersections::Vector{Vector{T}}
+    # Per-instance LRU for repeated evaluations at the same parameter values.
     track_state_cache::TC
     JsuF::HC.CompiledSystem
     JPF::HC.CompiledSystem
@@ -137,6 +140,7 @@ function compute_systems(F, n, k, B)
         evaluate(HC.ModelKit.differentiate(f, β), β => B)
     end
 
+    # Fuse each derivative block into one compiled system to avoid many tiny system evaluations.
     JsuF = CompiledSystem(System(reduce(vcat, JsuF_exprs), variables = vars))
     JPF = CompiledSystem(System(reduce(vcat, JPF_exprs), variables = vars))
     JBF = CompiledSystem(System(reduce(vcat, JBF_exprs), variables = vars))
@@ -171,6 +175,7 @@ function GradientCache(PWS)
 
     @assert N == n-k+1 "Unexpected length of system"
 
+    # The restricted tracker only stores [t; w], so each tracked point has length n - k + 1.
     line_hypersurface_intersections = [zeros(ComplexF64, n - k + 1) for _ in 1:d]
     track_state_cache = LRU{UInt,Vector{TrackStateCacheEntry{ComplexF64}}}(maxsize = 16)
   
@@ -282,6 +287,7 @@ function GradientCache(PWS)
 end
 
 function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
+    # Repeated queries at the same p can skip both continuation and the derived S/Uvals update.
     _try_restore_track_state!(
         GC.line_hypersurface_intersections,
         GC.track_state_cache,

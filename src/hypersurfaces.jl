@@ -1,5 +1,7 @@
 export ProjectedHypersurface, evaluate, gradient, hessian, degree
 
+# Helpers for the fused derivative systems in GradientCache. They unpack one flat evaluation
+# buffer back into the matrix/tensor layouts used by the local linear algebra.
 @inline function _fill_v0!(v0, S, Uvals, x, idx)
     v0[1] = S[idx]
     @inbounds for ii = 1:size(Uvals, 1)
@@ -164,7 +166,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
 
     u .= zero(eltype(u))
 
-    # Track to PWS
+    # `track!` now restores or computes both the tracked intersections and the cached S/Uvals data.
     track!(GC, PWS, x)
 
     #Obtain gradients of S and U with respect to p and β
@@ -176,7 +178,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
 
         _fill_v0!(v0, S, Uvals, x, i)
 
-        # use indexed loops to avoid tuple allocations from enumerate
+        # Evaluate the fused derivative blocks once and unpack them into the working arrays.
         JsuF_temp = GC.JsuF_temp
         _evaluate_fused_columns!(JsuF_temp, JsuF_vals, JsuF, v0, N, N)
 
@@ -236,7 +238,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     JxP = GC.JxP
     JPB = GC.JPB
 
-    # preallocate small temporaries to avoid allocating SubArray views inside inner loop
+    # Preallocated temporaries and cached LU data keep the Hessian path allocation-free.
     JsuF_lu = GC.JsuF_lu
     JsuF_ipiv = GC.JsuF_ipiv
     JsuF_lu_success = GC.JsuF_lu_success
@@ -265,7 +267,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     u .= zero(eltype(u))
     U .= zero(eltype(U))
 
-    # Track to PWS
+    # `track!` now restores or computes both the tracked intersections and the cached S/Uvals data.
     track!(GC, PWS, x)
 
     #Obtain gradients of S and U with respect to p and β
@@ -277,7 +279,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
 
         _fill_v0!(v0, S, Uvals, x, i)
 
-        # use indexed loops to avoid tuple allocations from enumerate
+        # Evaluate the fused first-derivative blocks once and unpack them into working storage.
         JsuF_temp = GC.JsuF_temp
         _evaluate_fused_columns!(JsuF_temp, JsuF_vals, JsuF, v0, N, N)
 
@@ -318,7 +320,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         end
     end
 
-    # Computation outlined in the abstract description Jon gave in Overleaf file
+    # Compute the second-derivative contributions using the fused tensor systems.
     for j = 1:length(S)
 
         !PWS.track_report[j] && continue # skip if j-th track failed
@@ -381,7 +383,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     end
 
 
-    #Compute Hessian
+    # Reuse the LU factors of JsuF computed above when solving the final Hessian systems.
     fill!(M, zero(ComplexF64)) # here M will get assigned the Hessian of log r
     for j = 1:length(S)
         
