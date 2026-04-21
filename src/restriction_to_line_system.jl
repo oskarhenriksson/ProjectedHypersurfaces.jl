@@ -1,8 +1,7 @@
 export RestrictionToLineSystem
 
-# Specialized `AbstractSystem` for the substitution x = [p + t * direction; w].
-# This mirrors the evaluation/Jacobian/Taylor structure of HC's IntrinsicSubspaceHomotopy,
-# but only the base point p moves while the line direction stays fixed.
+# `AbstractSystem` for the substitution x = [p + t * direction; w].
+# The base point p is treated as a parameter, while the line direction is fixed.
 """
     RestrictionToLineSystem(F::AbstractSystem, direction, k)
 
