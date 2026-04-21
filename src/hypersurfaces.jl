@@ -130,13 +130,11 @@ function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     PWS, GC = h.PWS, h.GC
 
     S = GC.S
-    Uvals = GC.Uvals
 
     track!(GC, PWS, x)
 
     u = 0.0
 
-    get_s_and_Uvals!(Uvals, S, GC, PWS)
     #@inbounds @simd 
     for si in S 
         u += -log(abs(si))
@@ -168,7 +166,6 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
 
     # Track to PWS
     track!(GC, PWS, x)
-    get_s_and_Uvals!(Uvals, S, GC, PWS)
 
     #Obtain gradients of S and U with respect to p and β
     for i = 1:length(S)
@@ -270,7 +267,6 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
 
     # Track to PWS
     track!(GC, PWS, x)
-    get_s_and_Uvals!(Uvals, S, GC, PWS)
 
     #Obtain gradients of S and U with respect to p and β
     for i = 1:length(S)
