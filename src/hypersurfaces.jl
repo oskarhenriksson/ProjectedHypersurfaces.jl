@@ -1,4 +1,99 @@
 export ProjectedHypersurface, evaluate, gradient, hessian, degree
+
+@inline function _fill_v0!(v0, S, Uvals, x, idx)
+    v0[1] = S[idx]
+    @inbounds for ii = 1:size(Uvals, 1)
+        v0[1 + ii] = Uvals[ii, idx]
+    end
+    @inbounds for ii = 1:length(x)
+        v0[1 + size(Uvals, 1) + ii] = x[ii]
+    end
+    v0
+end
+
+@inline function _unpack_fused_columns!(dest, vals, nrows, ncols)
+    for col = 1:ncols
+        offset = (col - 1) * nrows
+        @inbounds for row = 1:nrows
+            dest[row, col] = vals[offset + row]
+        end
+    end
+    dest
+end
+
+@inline function _unpack_fused_tensor!(dest, vals, nout, nrows, ncols)
+    for col = 1:ncols
+        for row = 1:nrows
+            offset = ((col - 1) * nrows + (row - 1)) * nout
+            @inbounds for out = 1:nout
+                dest[out, row, col] = vals[offset + out]
+            end
+        end
+    end
+    dest
+end
+
+@inline function _evaluate_fused_columns!(dest, vals, F, x, nrows, ncols)
+    evaluate!(vals, F, x)
+    _unpack_fused_columns!(dest, vals, nrows, ncols)
+end
+
+@inline function _evaluate_fused_tensor!(dest, vals, F, x, nout, nrows, ncols)
+    evaluate!(vals, F, x)
+    _unpack_fused_tensor!(dest, vals, nout, nrows, ncols)
+end
+
+@inline function _fill_rhs1!(rhs1, JPF_temp, JBF_temp)
+    for col = 1:size(JPF_temp, 2)
+        @inbounds for row = 1:size(rhs1, 1)
+            rhs1[row, col] = JPF_temp[row, col]
+        end
+    end
+    for idx = 1:size(JBF_temp, 1)
+        col = size(JPF_temp, 2) + idx
+        @inbounds for row = 1:size(rhs1, 1)
+            rhs1[row, col] = JBF_temp[idx, row]
+        end
+    end
+    rhs1
+end
+
+@inline function _copy_rhs1_blocks!(SP, SB, UP, UB, rhs1, idx)
+    @inbounds @simd for jj = 1:size(SP, 2)
+        SP[idx, jj] = rhs1[1, jj]
+        SB[idx, jj] = rhs1[1, size(SP, 2) + jj]
+    end
+    @inbounds for ii = 1:size(rhs1, 1) - 1
+        for jj = 1:size(SP, 2)
+            UP[idx, ii, jj] = rhs1[1 + ii, jj]
+            UB[idx, ii, jj] = rhs1[1 + ii, size(SP, 2) + jj]
+        end
+    end
+    nothing
+end
+
+@inline function _fill_M1_M2!(M1, M2, SP, SB, UP, UB, idx)
+    k = size(SP, 2)
+    N = size(M2, 1)
+    for a = 1:k
+        M1[a, 1] = SP[idx, a]
+    end
+    for a = 1:k
+        for b = 2:N
+            M1[a, b] = UP[idx, b - 1, a]
+        end
+    end
+    for b = 1:k
+        M2[1, b] = SB[idx, b]
+    end
+    for b = 1:k
+        for a = 2:N
+            M2[a, b] = UB[idx, a - 1, b]
+        end
+    end
+    nothing
+end
+
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
     projection_vars::Vector{HC.Variable}
@@ -64,6 +159,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     Uvals = GC.Uvals
     SB = GC.SB
     rhs1, rhs2, rhs3 = GC.rhs1, GC.rhs2, GC.rhs3
+    JsuF_vals, JPF_vals, JBF_vals = GC.JsuF_vals, GC.JPF_vals, GC.JBF_vals
 
     N, n = size(PWS.F)
     k = n_projection_variables(PWS)
@@ -81,52 +177,19 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
             continue
         end
 
-        # fill v0 in-place instead of vcat
-        v0[1] = S[i]
-        @inbounds for ii = 1:size(Uvals,1)
-            v0[1 + ii] = Uvals[ii, i]
-        end
-        @inbounds for ii = 1:length(x)
-            v0[1 + size(Uvals,1) + ii] = x[ii]
-        end
+        _fill_v0!(v0, S, Uvals, x, i)
 
         # use indexed loops to avoid tuple allocations from enumerate
         JsuF_temp = GC.JsuF_temp
-        for idx = 1:length(JsuF)
-            evaluate!(rhs2, JsuF[idx], v0)
-            @inbounds for ii in 1:N
-                JsuF_temp[ii, idx] = rhs2[ii]
-            end
-        end
+        _evaluate_fused_columns!(JsuF_temp, JsuF_vals, JsuF, v0, N, N)
 
         JPF_temp = GC.JPF_temp
-        for idx = 1:length(JPF)
-            evaluate!(rhs2, JPF[idx], v0)
-            @inbounds for ii in 1:N
-                JPF_temp[ii, idx] = rhs2[ii]
-            end
-        end
+        _evaluate_fused_columns!(JPF_temp, JPF_vals, JPF, v0, N, k)
 
         JBF_temp = GC.JBF_temp
-        for idx = 1:length(JBF)
-            evaluate!(rhs3, JBF[idx], v0)
-            @inbounds for ii in 1:k
-                JBF_temp[ii, idx] = rhs3[ii]
-            end
-        end
+        _evaluate_fused_columns!(JBF_temp, JBF_vals, JBF, v0, k, N)
 
-        # fill rhs1 in-place (unchanged) using explicit loops to avoid slice allocations
-        for col = 1:size(JPF_temp, 2)
-            @inbounds for row = 1:size(rhs1, 1)
-                rhs1[row, col] = JPF_temp[row, col]
-            end
-        end
-        for idx = 1:size(JBF_temp, 1)
-            col = size(JPF_temp, 2) + idx
-            @inbounds for row = 1:size(rhs1, 1)
-                rhs1[row, col] = JBF_temp[idx, row]
-            end
-        end
+        _fill_rhs1!(rhs1, JPF_temp, JBF_temp)
 
         rhs1 .*= -1
         # In-place linear solving with pre-allocated pivot vector
@@ -191,6 +254,8 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     UB = GC.UB
     A = GC.A
     rhs1, rhs2, rhs3 = GC.rhs1, GC.rhs2, GC.rhs3
+    JsuF_vals, JPF_vals, JBF_vals = GC.JsuF_vals, GC.JPF_vals, GC.JBF_vals
+    HF_vals, JxB_vals, JxP_vals, JPB_vals = GC.HF_vals, GC.JxB_vals, GC.JxP_vals, GC.JPB_vals
 
     M, M1, M2, M3 = GC.M, GC.M1, GC.M2, GC.M3
 
@@ -211,52 +276,19 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
             continue
         end
 
-        # fill v0 in-place instead of vcat
-        v0[1] = S[i]
-        @inbounds for ii = 1:size(Uvals,1)
-            v0[1 + ii] = Uvals[ii, i]
-        end
-        @inbounds for ii = 1:length(x)
-            v0[1 + size(Uvals,1) + ii] = x[ii]
-        end
+        _fill_v0!(v0, S, Uvals, x, i)
 
         # use indexed loops to avoid tuple allocations from enumerate
         JsuF_temp = GC.JsuF_temp
-        for idx = 1:length(JsuF)
-            evaluate!(rhs2, JsuF[idx], v0)
-            @inbounds for ii in 1:N
-                JsuF_temp[ii, idx] = rhs2[ii]
-            end
-        end
+        _evaluate_fused_columns!(JsuF_temp, JsuF_vals, JsuF, v0, N, N)
 
         JPF_temp = GC.JPF_temp
-        for idx = 1:length(JPF)
-            evaluate!(rhs2, JPF[idx], v0)
-            @inbounds for ii in 1:N
-                JPF_temp[ii, idx] = rhs2[ii]
-            end
-        end
+        _evaluate_fused_columns!(JPF_temp, JPF_vals, JPF, v0, N, k)
 
         JBF_temp = GC.JBF_temp
-        for idx = 1:length(JBF)
-            evaluate!(rhs3, JBF[idx], v0)
-            @inbounds for ii in 1:k
-                JBF_temp[ii, idx] = rhs3[ii]
-            end
-        end
+        _evaluate_fused_columns!(JBF_temp, JBF_vals, JBF, v0, k, N)
 
-        # fill rhs1 in-place (unchanged) using explicit loops to avoid slice allocations
-        for col = 1:size(JPF_temp, 2)
-            @inbounds for row = 1:size(rhs1, 1)
-                rhs1[row, col] = JPF_temp[row, col]
-            end
-        end
-        for idx = 1:size(JBF_temp, 1)
-            col = size(JPF_temp, 2) + idx
-            @inbounds for row = 1:size(rhs1, 1)
-                rhs1[row, col] = JBF_temp[idx, row]
-            end
-        end
+        _fill_rhs1!(rhs1, JPF_temp, JBF_temp)
 
         rhs1 .*= -1
         # In-place linear solving with pre-allocated pivot vector
@@ -267,17 +299,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
             fill!(rhs1, zero(ComplexF64))
         end
 
-        # copy without slice allocations
-        @inbounds @simd for jj = 1:k
-            SP[i, jj] = rhs1[1, jj]
-            SB[i, jj] = rhs1[1, k + jj]
-        end
-        @inbounds for ii = 1:size(rhs1, 1)-1
-            for jj = 1:k
-                UP[i, ii, jj] = rhs1[1 + ii, jj]
-                UB[i, ii, jj] = rhs1[1 + ii, k + jj]
-            end
-        end
+        _copy_rhs1_blocks!(SP, SB, UP, UB, rhs1, i)
         @inbounds @simd for jj = 1:k
             u[jj] -= SB[i, jj]
         end
@@ -295,83 +317,29 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
 
         !PWS.track_report[j] && continue # skip if j-th track failed
 
-        # fill v0 in-place instead of vcat
-        v0[1] = S[j]
-        @inbounds for ii = 1:size(Uvals,1)
-            v0[1 + ii] = Uvals[ii, j]
-        end
-        @inbounds for ii = 1:length(x)
-            v0[1 + size(Uvals,1) + ii] = x[ii]
-        end
+        _fill_v0!(v0, S, Uvals, x, j)
 
         HF_temp = GC.HF_temp
-        # indexed loops avoid allocations from eachcol/enumerate
-        HF_nrows, HF_ncols = size(HF)
-        for col_idx = 1:HF_ncols
-            for row_idx = 1:HF_nrows
-                evaluate!(rhs2, HF[row_idx, col_idx], v0)
-                @inbounds for ii in 1:N
-                    HF_temp[ii, row_idx, col_idx] = rhs2[ii]
-                end
-            end
-        end
+        HF_nrows, HF_ncols = N, N
+        _evaluate_fused_tensor!(HF_temp, HF_vals, HF, v0, N, HF_nrows, HF_ncols)
 
         # Evaluate JxB using evaluate! with indexed loops
         JxB_temp = GC.JxB_temp
-        JxB_nrows, JxB_ncols = size(JxB)
-        for col_idx = 1:JxB_ncols
-            for row_idx = 1:JxB_nrows
-                evaluate!(rhs2, JxB[row_idx, col_idx], v0)
-                @inbounds for ii in 1:N
-                    JxB_temp[ii, row_idx, col_idx] = rhs2[ii]
-                end
-            end
-        end
+        JxB_nrows, JxB_ncols = N, k
+        _evaluate_fused_tensor!(JxB_temp, JxB_vals, JxB, v0, N, JxB_nrows, JxB_ncols)
 
         JxP_temp = GC.JxP_temp
-        JxP_nrows, JxP_ncols = size(JxP)
-        for col_idx = 1:JxP_ncols
-            for row_idx = 1:JxP_nrows
-                evaluate!(rhs2, JxP[row_idx, col_idx], v0)
-                @inbounds for ii in 1:N
-                    JxP_temp[ii, row_idx, col_idx] = rhs2[ii]
-                end
-            end
-        end
+        JxP_nrows, JxP_ncols = N, k
+        _evaluate_fused_tensor!(JxP_temp, JxP_vals, JxP, v0, N, JxP_nrows, JxP_ncols)
 
         JPB_temp = GC.JPB_temp
-        JPB_nrows, JPB_ncols = size(JPB)
-        for col_idx = 1:JPB_ncols
-            for row_idx = 1:JPB_nrows
-                evaluate!(rhs2, JPB[row_idx, col_idx], v0)
-                @inbounds for ii in 1:N
-                    JPB_temp[ii, row_idx, col_idx] = rhs2[ii]
-                end
-            end
-        end
+        JPB_nrows, JPB_ncols = k, k
+        _evaluate_fused_tensor!(JPB_temp, JPB_vals, JPB, v0, N, JPB_nrows, JPB_ncols)
 
 
         for i = 1:N
 
-            # the following defines 
-            #M1 = [SP[j, :] transpose(UP[j, :, :])] 
-            #M2 = transpose([SB[j, :] transpose(UB[j, :, :])]) 
-            for a = 1:k
-                M1[a, 1] = SP[j, a]
-            end
-            for a = 1:k
-                for b = 2:N
-                    M1[a, b] = UP[j, b-1, a]
-                end
-            end
-            for b = 1:k
-                M2[1, b] = SB[j, b]
-            end
-            for b = 1:k
-                for a = 2:N
-                    M2[a, b] = UB[j, a-1, b]
-                end
-            end
+            _fill_M1_M2!(M1, M2, SP, SB, UP, UB, j)
 
             # copy slices into temporaries (avoids allocating SubArray objects)
             @inbounds for r = 1:HF_nrows, c = 1:HF_ncols
@@ -415,22 +383,11 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         
         !PWS.track_report[j] && continue # skip if j-th track failed
 
-        v0[1] = S[j]
-        @inbounds for ii = 1:size(Uvals,1)
-            v0[1 + ii] = Uvals[ii, j]
-        end
-        @inbounds for ii = 1:length(x)
-            v0[1 + size(Uvals,1) + ii] = x[ii]
-        end
+        _fill_v0!(v0, S, Uvals, x, j)
 
 
         Jtu = GC.Jtu_temp
-        for (idx, J) in enumerate(JsuF)
-            evaluate!(rhs2, J, v0)
-            @inbounds for ii in 1:N
-                    Jtu[ii, idx] = rhs2[ii]
-                end
-        end
+        _evaluate_fused_columns!(Jtu, JsuF_vals, JsuF, v0, N, N)
         _, ipiv, info = LinearAlgebra.LAPACK.getrf!(Jtu, GC.ipiv)
         for a = 1:k, b = 1:k
             for i = 1:N

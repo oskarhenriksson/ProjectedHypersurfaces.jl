@@ -1,13 +1,13 @@
 mutable struct GradientCache{T}
     v0::Vector{T}
     line_hypersurface_intersections::Vector{Vector{T}}
-    JsuF::Vector{HC.CompiledSystem}
-    JPF::Vector{HC.CompiledSystem}
-    JBF::Vector{HC.CompiledSystem}
-    HF::Matrix{HC.CompiledSystem}
-    JxB::Matrix{HC.CompiledSystem}
-    JxP::Matrix{HC.CompiledSystem}
-    JPB::Matrix{HC.CompiledSystem}
+    JsuF::HC.CompiledSystem
+    JPF::HC.CompiledSystem
+    JBF::HC.CompiledSystem
+    HF::HC.CompiledSystem
+    JxB::HC.CompiledSystem
+    JxP::HC.CompiledSystem
+    JPB::HC.CompiledSystem
     S::Vector{T}
     X::Vector{T}
     Uvals::Matrix{T}
@@ -19,6 +19,13 @@ mutable struct GradientCache{T}
     rhs1::Matrix{T}
     rhs2::Vector{T}
     rhs3::Vector{T}
+    JsuF_vals::Vector{T}
+    JPF_vals::Vector{T}
+    JBF_vals::Vector{T}
+    HF_vals::Vector{T}
+    JxB_vals::Vector{T}
+    JxP_vals::Vector{T}
+    JPB_vals::Vector{T}
     JsuF_temp::Matrix{T}
     JPF_temp::Matrix{T}
     JBF_temp::Matrix{T}
@@ -52,34 +59,38 @@ function compute_systems(F, n, k, B)
         HC.ModelKit.differentiate(F_on_line, αi)
     end
 
-    JsuF = map(∇v) do ∇vi
-        g = evaluate(∇vi, β => B)
-        System(g, variables = vars)
+    JsuF_exprs = map(∇v) do ∇vi
+        evaluate(∇vi, β => B)
     end
-    JPF = map(∇α) do ∇vi
-        g = evaluate(∇vi, β => B)
-        System(g, variables = vars)
+    JPF_exprs = map(∇α) do ∇vi
+        evaluate(∇vi, β => B)
     end
-    JBF = map(F_on_line) do f
-        g = evaluate(HC.ModelKit.differentiate(f, β), β => B)
-        System(g, variables = vars)
+    JBF_exprs = map(F_on_line) do f
+        evaluate(HC.ModelKit.differentiate(f, β), β => B)
     end
+
+    JsuF = CompiledSystem(System(reduce(vcat, JsuF_exprs), variables = vars))
+    JPF = CompiledSystem(System(reduce(vcat, JPF_exprs), variables = vars))
+    JBF = CompiledSystem(System(reduce(vcat, JBF_exprs), variables = vars))
 
     function J(x) 
         map(Iterators.product(∇v, x)) do (∇vi, xj)
-            hess_ij = evaluate(HC.ModelKit.differentiate(∇vi, xj), β => B)
-            System(hess_ij, variables = vars) 
+            evaluate(HC.ModelKit.differentiate(∇vi, xj), β => B)
         end
     end
 
-    HF = J(v)
-    JxB = J(β)
-    JxP = J(α)
-    JPB = map(Iterators.product(∇α, β)) do (∇αi, βj)
-            hess_ij = evaluate(HC.ModelKit.differentiate(∇αi, βj), β => B)
-            System(hess_ij, variables = vars) 
-        end
-    return CompiledSystem.(JsuF), CompiledSystem.(JPF), CompiledSystem.(JBF), CompiledSystem.(HF), CompiledSystem.(JxB), CompiledSystem.(JxP), CompiledSystem.(JPB)
+    HF_exprs = J(v)
+    JxB_exprs = J(β)
+    JxP_exprs = J(α)
+    JPB_exprs = map(Iterators.product(∇α, β)) do (∇αi, βj)
+        evaluate(HC.ModelKit.differentiate(∇αi, βj), β => B)
+    end
+    HF = CompiledSystem(System(reduce(vcat, vec(HF_exprs)), variables = vars))
+    JxB = CompiledSystem(System(reduce(vcat, vec(JxB_exprs)), variables = vars))
+    JxP = CompiledSystem(System(reduce(vcat, vec(JxP_exprs)), variables = vars))
+    JPB = CompiledSystem(System(reduce(vcat, vec(JPB_exprs)), variables = vars))
+
+    return JsuF, JPF, JBF, HF, JxB, JxP, JPB
 
 end
 
@@ -112,19 +123,26 @@ function GradientCache(PWS)
     rhs1 = zeros(ComplexF64, N, 2*k)  
     rhs2 = zeros(ComplexF64, N)  
     rhs3 = zeros(ComplexF64, k)  
+    JsuF_vals = zeros(ComplexF64, N * N)
+    JPF_vals = zeros(ComplexF64, N * k)
+    JBF_vals = zeros(ComplexF64, N * k)
+    HF_vals = zeros(ComplexF64, N * N * N)
+    JxB_vals = zeros(ComplexF64, N * N * k)
+    JxP_vals = zeros(ComplexF64, N * N * k)
+    JPB_vals = zeros(ComplexF64, N * k * k)
 
     JsuF_temp = zeros(ComplexF64, N, 1+n-k)
     JPF_temp = zeros(ComplexF64, N, k)
     JBF_temp = zeros(ComplexF64, k, N)
     Jtu_temp = zeros(ComplexF64, N, 1+n-k) # TODO: Maybe can reuse Jsu_temp....
-    HF_temp = zeros(ComplexF64, N, size(HF)...)
-    JxB_temp = zeros(ComplexF64, N, size(JxB)...) # size(JxB)
-    JxP_temp = zeros(ComplexF64, N, size(JxP)...)
-    JPB_temp = zeros(ComplexF64, N, size(JPB)...)
-    temp_Hi = zeros(ComplexF64, size(HF)...)
-    temp_Jxpi = zeros(ComplexF64, size(JxB)...)
-    temp_Jxbi = zeros(ComplexF64, size(JxP)...)
-    temp_Jpbi = zeros(ComplexF64, size(JPB)...)
+    HF_temp = zeros(ComplexF64, N, N, N)
+    JxB_temp = zeros(ComplexF64, N, N, k)
+    JxP_temp = zeros(ComplexF64, N, N, k)
+    JPB_temp = zeros(ComplexF64, N, k, k)
+    temp_Hi = zeros(ComplexF64, N, N)
+    temp_Jxpi = zeros(ComplexF64, N, k)
+    temp_Jxbi = zeros(ComplexF64, N, k)
+    temp_Jpbi = zeros(ComplexF64, k, k)
 
     ipiv = Vector{LinearAlgebra.LAPACK.BlasInt}(undef, min(size(JsuF_temp,1), size(JsuF_temp,2)))
 
@@ -158,6 +176,13 @@ function GradientCache(PWS)
                     rhs1, 
                     rhs2, 
                     rhs3,
+                    JsuF_vals,
+                    JPF_vals,
+                    JBF_vals,
+                    HF_vals,
+                    JxB_vals,
+                    JxP_vals,
+                    JPB_vals,
                     JsuF_temp, 
                     JPF_temp, 
                     JBF_temp, 
