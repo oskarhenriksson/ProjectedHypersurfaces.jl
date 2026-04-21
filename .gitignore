@@ -4,3 +4,13 @@
 
 # Don't track figures
 figures/
+
+# Dont' track jl files 
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+*.jl.*.mem
+*.jld
+
+# Dont' track Manifest.toml
+Manifest.toml

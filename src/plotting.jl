@@ -116,7 +116,11 @@ function _plot_unstable_flows!(
         for direction in directions
             normalized_direction = direction / norm(direction)
             for sign in (-1.0, 1.0)
-                problem = ODEProblem(g, pt + sign * flow_seed_scale * normalized_direction, flow_tspan)
+                problem = SciMLBase.ODEProblem(
+                    g,
+                    pt + sign * flow_seed_scale * normalized_direction,
+                    flow_tspan,
+                )
                 solution = DE.solve(problem, reltol = 1e-6, abstol = 1e-6)
                 _plot_flow_branch!(pl, Tuple.(solution.u), flow_breakpoint_ratio, flow_linewidth, arrowstyle)
             end

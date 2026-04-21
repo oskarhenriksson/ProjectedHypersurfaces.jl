@@ -1,8 +1,8 @@
 module ProjectedHypersurfaceRegions
-using HomotopyContinuation, LinearAlgebra, DifferentialEquations, LightGraphs, ProgressMeter
+using HomotopyContinuation, LinearAlgebra, OrdinaryDiffEq, SciMLBase, LightGraphs, ProgressMeter
 
 const HC = HomotopyContinuation
-const DE = DifferentialEquations
+const DE = OrdinaryDiffEq
 
 import HomotopyContinuation.evaluate!
 import HomotopyContinuation.evaluate_and_jacobian!
