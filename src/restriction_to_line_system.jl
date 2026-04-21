@@ -156,7 +156,17 @@ function ModelKit.taylor!(
     x::AbstractVector,
     p::TaylorVector,
 )
-    _set_restricted_vector!(F.v, F, x, first.(p))
+    length(x) == size(F, 2) || throw(ArgumentError("Expected $(size(F, 2)) variables."))
+    length(p) == F.k || throw(ArgumentError("Expected $(F.k) parameters."))
+
+    t = x[1]
+    @inbounds for j = 1:F.k
+        F.v[j] = p[j][0] + t * F.direction[j]
+    end
+    @inbounds for j = (F.k + 1):length(F.v)
+        F.v[j] = x[j - F.k + 1]
+    end
+
     evaluate_and_jacobian!(F.u, F.J, F.system, F.v)
 
     @inbounds for i = 1:size(F.system, 1)
