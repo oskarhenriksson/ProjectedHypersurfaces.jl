@@ -45,9 +45,7 @@ function PseudoWitnessSet(
     end
     
     # Intersect with random linear subspace
-    @unique_var t, p[1:k]
-    v = variables(F)
-    F_L = System([F.expressions; p + t .* L.b - v[1:k]], variables = [v; t], parameters = p)
+    F_L = RestrictionToLineSystem(F, b, k; compile = compile)
 
     # Trace the nonsingular solutions 
     E = HC.solve(F_L; start_system = start_system,
@@ -63,7 +61,7 @@ function PseudoWitnessSet(
     Wt = solutions(M)
 
     # Set up tracker 
-    tracker = Tracker(ParameterHomotopy(fixed(F_L; compile = compile), L.p, L.p))
+    tracker = Tracker(ParameterHomotopy(F_L, L.p, L.p))
     track_report = zeros(Bool, length(solutions(M))) # for keeping track of which paths are successful
 
     PseudoWitnessSet(F, k, L, Wt, EndgameTracker(tracker), track_report)

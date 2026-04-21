@@ -15,12 +15,12 @@ import HomotopyContinuation.ModelKit.variables
 using Reexport: @reexport
 @reexport using HomotopyContinuation
 
+include("restriction_to_line_system.jl")
 include("pseudo_witness_sets.jl")
 include("gradient_cache.jl")
 include("hypersurfaces.jl")
 include("routing_functions.jl")
 include("homotopy.jl")
-include("restriction_to_line_system.jl")
 include("critical_points.jl")
 include("ode_solving.jl")
 include("graph.jl")
