@@ -1,7 +1,7 @@
 export ProjectedHypersurface, evaluate, gradient, hessian, degree
 
 # Helpers for the fused derivative systems in GradientCache. They unpack one flat evaluation
-# buffer back into the matrix/tensor layouts used by the local linear algebra.
+# buffer into the matrix and tensor layouts used by the local linear algebra.
 @inline function _fill_v0!(v0, S, Uvals, x, idx)
     v0[1] = S[idx]
     @inbounds for ii = 1:size(Uvals, 1)
@@ -166,7 +166,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
 
     u .= zero(eltype(u))
 
-    # `track!` now restores or computes both the tracked intersections and the cached S/Uvals data.
+    # `track!` restores or computes both the tracked intersections and the cached S/Uvals data.
     track!(GC, PWS, x)
 
     #Obtain gradients of S and U with respect to p and β
@@ -178,7 +178,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
 
         _fill_v0!(v0, S, Uvals, x, i)
 
-        # Evaluate the fused derivative blocks once and unpack them into the working arrays.
+        # Evaluate the fused derivative blocks and unpack them into the working arrays.
         JsuF_temp = GC.JsuF_temp
         _evaluate_fused_columns!(JsuF_temp, JsuF_vals, JsuF, v0, N, N)
 
@@ -267,7 +267,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     u .= zero(eltype(u))
     U .= zero(eltype(U))
 
-    # `track!` now restores or computes both the tracked intersections and the cached S/Uvals data.
+    # `track!` restores or computes both the tracked intersections and the cached S/Uvals data.
     track!(GC, PWS, x)
 
     #Obtain gradients of S and U with respect to p and β
@@ -279,7 +279,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
 
         _fill_v0!(v0, S, Uvals, x, i)
 
-        # Evaluate the fused first-derivative blocks once and unpack them into working storage.
+        # Evaluate the fused first-derivative blocks and unpack them into working storage.
         JsuF_temp = GC.JsuF_temp
         _evaluate_fused_columns!(JsuF_temp, JsuF_vals, JsuF, v0, N, N)
 
