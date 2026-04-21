@@ -160,8 +160,9 @@ function ModelKit.taylor!(
     length(p) == F.k || throw(ArgumentError("Expected $(F.k) parameters."))
 
     t = x[1]
+    p0, p1 = vectors(p)
     @inbounds for j = 1:F.k
-        F.v[j] = p[j][0] + t * F.direction[j]
+        F.v[j] = p0[j] + t * F.direction[j]
     end
     @inbounds for j = (F.k + 1):length(F.v)
         F.v[j] = x[j - F.k + 1]
@@ -172,7 +173,7 @@ function ModelKit.taylor!(
     @inbounds for i = 1:size(F.system, 1)
         ui = zero(eltype(u))
         for j = 1:F.k
-            ui += F.J[i, j] * p[j][1]
+            ui += F.J[i, j] * p1[j]
         end
         u[i] = ui
     end
