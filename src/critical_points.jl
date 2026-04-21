@@ -88,6 +88,7 @@ function _setup_monodromy_solver(
         HomotopyContinuation.MonodromyLoop{P}[],
         unique_points,
         ReentrantLock(),
+        nothing,
         options,
         HomotopyContinuation.MonodromyStatistics(),
         trace,
