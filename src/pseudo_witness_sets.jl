@@ -62,7 +62,19 @@ function PseudoWitnessSet(
     # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
     M = monodromy_solve(F_L, solutions(E), L.p)
     Wt = solutions(M)
-    πW = unique_points([w[1:end-1] for w in Wt])
+    # πW = unique_points([w[1:k] for w in Wt])
+
+    unique_points = UniquePoints(first(Wt)[1:k], 1)
+    πW = Vector{Vector{ComplexF64}}()
+    fiber_representatives = Vector{Vector{ComplexF64}}()
+    for (i, vᵢ) in enumerate(Wt)
+        _, new_point = add!(unique_points, vᵢ[1:k], i)
+        if new_point
+            push!(πW, vᵢ[1:k])
+            push!(fiber_representatives, vᵢ)
+        end
+    end
+    Wt = fiber_representatives
 
     # Set up tracker 
     tracker = Tracker(ParameterHomotopy(fixed(F_L; compile = compile), L.p, L.p))

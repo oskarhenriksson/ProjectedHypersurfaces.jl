@@ -4,8 +4,6 @@ Pkg.instantiate()
 
 using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
 
-
-
 @testset "Quadratic discriminant" begin
     
     @var a b x
@@ -298,5 +296,23 @@ end
     Hess_log_abs_h = p -> [[2/(p[1]^2 - 4*p[2]) - 4*p[1]^2/(p[1]^2 - 4*p[2])^2 8*p[1]/(p[1]^2 - 4*p[2])^2]; 
     [8*p[1]/(p[1]^2 - 4*p[2])^2  -16/(p[1]^2 - 4*p[2])^2]]
     @test Hess_log_abs_h(pt) - ProjectedHypersurfaceRegions.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
+
+end
+
+
+@testset "Noninjective projection" begin
+    @var x y z
+    F = System([z-x^2, y], variables = [x,y, z])
+    h = ProjectedHypersurface(F, [y, z])
+
+    @test degree(h)==1
+    @test length(h.PWS.Wt) == 2
+
+
+    # h(y,z) = y (up to a constant)
+
+    # gradient(h, [y, z]) = [1/y, 0]
+    gradient(h, [2, 3]) 
+
 
 end
