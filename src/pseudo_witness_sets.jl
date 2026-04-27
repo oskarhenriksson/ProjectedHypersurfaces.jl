@@ -59,11 +59,17 @@ function PseudoWitnessSet(
         @warn "Irreducible component of higher multiplicity detected in the incidence variety."
     end
 
+
+
     # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
     M = monodromy_solve(F_L, solutions(E), L.p)
     Wt = solutions(M)
     # πW = unique_points([w[1:k] for w in Wt])
 
+    if length(Wt)==0
+        @error "No witness points found."
+    end
+    
     unique_points = UniquePoints(first(Wt)[1:k], 1)
     πW = Vector{Vector{ComplexF64}}()
     fiber_representatives = Vector{Vector{ComplexF64}}()
