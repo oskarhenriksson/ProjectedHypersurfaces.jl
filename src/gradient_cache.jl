@@ -1,6 +1,7 @@
 # Cache one fully tracked state for a target parameter p, including the cheap postprocessing
 # that extracts s = 1 / t and the residual coordinates uval.
-struct TrackStateCacheEntry{T}
+mutable struct TrackStateCacheEntry{T}
+    valid::Bool
     p::Vector{T}
     intersections::Vector{Vector{T}}
     track_report::Vector{Bool}
@@ -8,10 +9,15 @@ struct TrackStateCacheEntry{T}
     Uvals::Matrix{T}
 end
 
+mutable struct TrackStateCache{T}
+    entries::Vector{TrackStateCacheEntry{T}}
+    next_index::Int
+end
+
 mutable struct GradientCache{T,TC}
     v0::Vector{T}
     line_hypersurface_intersections::Vector{Vector{T}}
-    # Per-instance LRU cache for repeated evaluations at the same parameter values.
+    # Per-instance cache for immediate repeated evaluations at the same parameter value.
     track_state_cache::TC
     JsuF::HC.CompiledSystem
     JPF::HC.CompiledSystem
@@ -62,8 +68,6 @@ mutable struct GradientCache{T,TC}
     Hess_temp::Matrix{T}
 end
 
-@inline _track_cache_key(p::AbstractVector) = hash(p, UInt(0))
-
 @inline function _same_parameters(p::AbstractVector, q::AbstractVector)
     length(p) == length(q) || return false
     @inbounds for i = 1:length(p)
@@ -82,47 +86,81 @@ function _restore_track_state!(u, track_report, S, Uvals, entry::TrackStateCache
     nothing
 end
 
-function _store_track_state!(cache, p, u, track_report, S, Uvals)
-    key = _track_cache_key(p)
-    entries = get!(cache, key) do
-        TrackStateCacheEntry{ComplexF64}[]
+function _store_track_state!(entry::TrackStateCacheEntry, p, u, track_report, S, Uvals)
+    entry.valid = true
+    @inbounds for i = 1:length(p)
+        entry.p[i] = p[i]
     end
-    for i = 1:length(entries)
-        if _same_parameters(entries[i].p, p)
-            entries[i] = TrackStateCacheEntry(
-                ComplexF64.(p),
-                [copy(ui) for ui in u],
-                copy(track_report),
-                copy(S),
-                copy(Uvals),
-            )
-            return nothing
-        end
+    @inbounds for i = 1:length(u)
+        copyto!(entry.intersections[i], u[i])
+        entry.track_report[i] = track_report[i]
     end
-    push!(
-        entries,
-        TrackStateCacheEntry(
-            ComplexF64.(p),
-            [copy(ui) for ui in u],
-            copy(track_report),
-            copy(S),
-            copy(Uvals),
-        ),
-    )
+    copyto!(entry.S, S)
+    copyto!(entry.Uvals, Uvals)
     nothing
 end
 
-function _try_restore_track_state!(u, cache, track_report, S, Uvals, p)
-    entries = get(cache, _track_cache_key(p), nothing)
-    isnothing(entries) && return false
-    for entry in entries
-        if _same_parameters(entry.p, p)
+function _store_track_state!(cache::TrackStateCache, p, u, track_report, S, Uvals)
+    @inbounds for entry in cache.entries
+        if entry.valid && _same_parameters(entry.p, p)
+            _store_track_state!(entry, p, u, track_report, S, Uvals)
+            return nothing
+        end
+    end
+
+    entry = cache.entries[cache.next_index]
+    _store_track_state!(entry, p, u, track_report, S, Uvals)
+    cache.next_index = cache.next_index == length(cache.entries) ? 1 : cache.next_index + 1
+    nothing
+end
+
+function _try_restore_track_state!(u, entry::TrackStateCacheEntry, track_report, S, Uvals, p)
+    if entry.valid && _same_parameters(entry.p, p)
+        _restore_track_state!(u, track_report, S, Uvals, entry)
+        return true
+    end
+    false
+end
+
+function _try_restore_track_state!(u, cache::TrackStateCache, track_report, S, Uvals, p)
+    @inbounds for entry in cache.entries
+        if entry.valid && _same_parameters(entry.p, p)
             _restore_track_state!(u, track_report, S, Uvals, entry)
             return true
         end
     end
     false
 end
+
+function TrackStateCache(::Type{T}, d::Int, k::Int, restricted_dim::Int; maxsize::Int = 16) where {T}
+    maxsize > 0 || throw(ArgumentError("Expected track state cache size to be positive."))
+    TrackStateCache{T}(
+        [
+            TrackStateCacheEntry(
+                false,
+                zeros(T, k),
+                [zeros(T, restricted_dim) for _ in 1:d],
+                zeros(Bool, d),
+                zeros(T, d),
+                zeros(T, restricted_dim - 1, d),
+            )
+            for _ in 1:maxsize
+        ],
+        1,
+    )
+end
+
+function resize_track_state_cache!(GC::GradientCache{T}, maxsize::Int) where {T}
+    length(GC.track_state_cache.entries) == maxsize && return GC
+
+    d = length(GC.S)
+    k = length(GC.X)
+    restricted_dim = length(GC.line_hypersurface_intersections[1])
+    GC.track_state_cache = TrackStateCache(T, d, k, restricted_dim; maxsize = maxsize)
+
+    GC
+end
+
 function compute_systems(F, n, k, B)
     @unique_var uval[1:n-k] α[1:k] β[1:k] t
     F_on_line = F([α + (1 / t) * β; uval])
@@ -183,7 +221,7 @@ function GradientCache(PWS)
 
     # The restricted tracker stores [t; w], so each tracked point has length n - k + 1.
     line_hypersurface_intersections = [zeros(ComplexF64, n - k + 1) for _ in 1:d]
-    track_state_cache = LRU{UInt,Vector{TrackStateCacheEntry{ComplexF64}}}(maxsize = 16)
+    track_state_cache = TrackStateCache(ComplexF64, d, k, n - k + 1)
   
     @unique_var t, p[1:k]
 

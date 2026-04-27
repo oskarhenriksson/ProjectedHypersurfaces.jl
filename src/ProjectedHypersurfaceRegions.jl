@@ -1,6 +1,5 @@
 module ProjectedHypersurfaceRegions
 using HomotopyContinuation, LinearAlgebra, OrdinaryDiffEq, SciMLBase, LightGraphs, ProgressMeter
-using LRUCache: LRU
 
 const HC = HomotopyContinuation
 const DE = OrdinaryDiffEq
