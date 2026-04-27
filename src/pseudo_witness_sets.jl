@@ -67,7 +67,7 @@ function PseudoWitnessSet(
     # πW = unique_points([w[1:k] for w in Wt])
 
     if length(Wt)==0
-        @error "No witness points found."
+        error("No witness points found.")
     end
     
     unique_points = UniquePoints(first(Wt)[1:k], 1)

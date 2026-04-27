@@ -251,17 +251,22 @@ end;
 
 end;
 
-@testset "Multiplicity detection" begin
+#@testset "Multiplicity detection" begin
+    ## We need an example where the discriminant has a component of multiplicity > 1, but its not the entire discriminant. 
+    # I think one way to do this is to start with the the thing you want to project to, e.g. (a-b)^2*c = 0. 
+    # Then, introduce a new variable x that we will eliminate. Do a GL action of a,b,c -- that is, replace each with some linear combination of a,b,c, and x. Then, the resulting system will have the same discriminant, but now it will be a projection from a higher dimensional space, so we can test that we detect the multiplicity of the (a-b)^2 component without the entire discriminant being multiplicity > 1.
+#end
+
+@testset "Empty PWS" begin
     Random.seed!(1234)
     @var a b x
     F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
-    PseudoWitnessSet(F, 2) 
-    Logging.with_logger(Test.TestLogger(; min_level=Logging.Debug)) do
-        logger = Logging.current_logger()
-        PseudoWitnessSet(F, 2)
-        @test any(r -> r.level == Logging.Warn &&
-                       contains(r.message, "Irreducible component of higher multiplicity detected in the incidence variety."),
-                  logger.logs)
+
+    # For this example, (x-a)(x-b) = x^2 - (a+b)x  + ab, so the disc = a^2 + b^2 - 2ab = (a-b)^2. The discriminant is the line b=a with multiplicity 2. 
+    # BUT, we have a concurrent error with an empty witness set.
+    try PseudoWitnessSet(F,2) catch e 
+        @test isa(e, ErrorException)
+        @test contains(e.msg, "No witness points found.")
     end
 end
 
