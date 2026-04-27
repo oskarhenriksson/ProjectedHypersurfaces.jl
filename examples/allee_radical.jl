@@ -129,6 +129,7 @@ pl_radical_smaller = generate_plot(
     root_count_fn = allee_root_count_fn,
     annotate_root_counts = true, annotation_textsize = 4,
 )
+plot!(; size=(600,400))
 savefig("figures/allee_radical_zoomed_in.png")
 savefig("figures/allee_radical_zoomed_in.pdf")
 savefig("figures/allee_radical_zoomed_in.svg")

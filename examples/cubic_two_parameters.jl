@@ -48,7 +48,7 @@ generate_plot(r, pts, G, idx;
     markersize=6,
     annotation_textsize=5,
     arrowstyle=:simple,
-    flow_linewidth=0,
+    flow_linewidth=3,
     discriminant_linewidth=0,
     legend=false,
     #root_counting_system=System([x^3 + a * x^2 + b * x + 1], variables=[x], parameters=[a; b]),
