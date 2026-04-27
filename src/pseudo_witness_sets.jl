@@ -9,10 +9,11 @@ struct PseudoWitnessSet
     k::Int
     L::Line
     Wt::Vector
+    πW::Vector
     tracker::EndgameTracker
     track_report::Vector{Bool}
 end
-degree(PWS::PseudoWitnessSet) = length(PWS.Wt)
+degree(PWS::PseudoWitnessSet) = length(PWS.πW)
 total_dim(PWS::PseudoWitnessSet) = size(PWS.F, 2)
 n_projection_variables(PWS::PseudoWitnessSet) = PWS.k
 system(PWS::PseudoWitnessSet) = PWS.F
@@ -61,15 +62,16 @@ function PseudoWitnessSet(
     # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
     M = monodromy_solve(F_L, solutions(E), L.p)
     Wt = solutions(M)
+    πW = unique_points([w[1:end-1] for w in Wt])
 
     # Set up tracker 
     tracker = Tracker(ParameterHomotopy(fixed(F_L; compile = compile), L.p, L.p))
     track_report = zeros(Bool, length(solutions(M))) # for keeping track of which paths are successful
 
-    PseudoWitnessSet(F, k, L, Wt, EndgameTracker(tracker), track_report)
+    PseudoWitnessSet(F, k, L, Wt, πW, EndgameTracker(tracker), track_report)
 end
 
-witness_points(PWS::PseudoWitnessSet) = [w[1:end-1] for w in PWS.Wt]
+witness_points(PWS::PseudoWitnessSet) = PWS.πW
 
 function track!(u::Vector, PWS::PseudoWitnessSet, p)
     tracker = PWS.tracker
