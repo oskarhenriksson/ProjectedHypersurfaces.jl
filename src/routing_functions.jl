@@ -15,16 +15,12 @@ function RoutingFunction(
     e::Union{Int,Nothing} = nothing,
     c::Union{Vector,Nothing} = nothing,
     g::Union{Vector{Expression},Vector{Variable},Nothing} = nothing,
-    track_state_cache_size::Int = 16,
 )
 
     projection_vars = H[1].projection_vars
 
     for h in H[2:end]
         @assert h.projection_vars == projection_vars "All hypersurfaces must have the same projection variables"
-    end
-    for h in H
-        resize_track_state_cache!(h.GC, track_state_cache_size)
     end
 
     k = length(projection_vars)
