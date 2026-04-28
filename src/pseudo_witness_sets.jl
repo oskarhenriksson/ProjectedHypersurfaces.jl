@@ -8,11 +8,11 @@ struct PseudoWitnessSet{TF<:System,T<:Number,TT}
     F::TF
     k::Int
     L::Line{T}
-    Wt::Vector{Vector{ComplexF64}}
+    tW::Vector{Vector{ComplexF64}}
     tracker::TT
     track_report::Vector{Bool}
 end
-degree(PWS::PseudoWitnessSet) = length(PWS.Wt)
+degree(PWS::PseudoWitnessSet) = length(PWS.tW)
 total_dim(PWS::PseudoWitnessSet) = size(PWS.F, 2)
 n_projection_variables(PWS::PseudoWitnessSet) = PWS.k
 system(PWS::PseudoWitnessSet) = PWS.F
@@ -67,7 +67,7 @@ function PseudoWitnessSet(
     M = monodromy_solve(G, solutions(E), L.p)
     n = length(v)
     # Keep only the restricted coordinates [t; w] used by the restricted tracker.
-    Wt = map(s -> ComplexF64[s[1]; s[(k+2):end]], solutions(M))
+    tW = map(s -> ComplexF64[s[1]; s[(k+2):end]], solutions(M))
 
     # Set up tracker 
     
@@ -78,7 +78,7 @@ function PseudoWitnessSet(
         F,
         k,
         L,
-        Wt,
+        tW,
         EndgameTracker(tracker),
         track_report,
     )
@@ -88,7 +88,7 @@ function witness_points(PWS::PseudoWitnessSet)
     k = n_projection_variables(PWS)
     p = PWS.L.p
     b = PWS.L.b
-    map(PWS.Wt) do tw
+    map(PWS.tW) do tw
         t = tw[1]
         w = tw[2:end]
         v = similar(p, ComplexF64, k)
@@ -103,7 +103,7 @@ function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::Abstrac
     tracker = PWS.tracker
     target_parameters!(tracker, p)
     # Update one tracker instance in place for each target parameter.
-    for (l, w) in enumerate(PWS.Wt)
+    for (l, w) in enumerate(PWS.tW)
             HC.track!(tracker, w, 1)
             copyto!(u[l], tracker.tracker.state.x)
             PWS.track_report[l] = all(isfinite, u[l]) # note if the track was successful or not

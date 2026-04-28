@@ -50,7 +50,7 @@ PWS_new = PseudoWitnessSet(
     PWS_sq.F, 
     PWS_sq.k, 
     PWS_sq.L, 
-    PWS_sq.Wt[filter], 
+    PWS_sq.tW[filter], 
     PWS_sq.tracker,
     PWS_sq.track_report[filter]
 )
