@@ -251,6 +251,11 @@ end;
 
 end;
 
+@testset "Multiplicity detection" begin
+    @var a, b, x
+    F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
+    @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
+end
 @testset "Empty PWS" begin
     Random.seed!(1234)
     @var a b x
@@ -319,17 +324,4 @@ end
     # V(F) has two irreducible components that project down to V(a^2-4b)
     h = ProjectedHypersurface(F, [a, b])
     @test degree(h) == 2
-end
-
-@testset "Multiplicity detection" begin
-    @var a, b, x
-    F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
-    PseudoWitnessSet(F, 2) 
-    Logging.with_logger(Test.TestLogger(; min_level=Logging.Debug)) do
-        logger = Logging.current_logger()
-        PseudoWitnessSet(F, 2)
-        @test any(r -> r.level == Logging.Warn &&
-                       contains(r.message, "Irreducible component of higher multiplicity detected in the incidence variety."),
-                  logger.logs)
-    end
 end
