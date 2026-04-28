@@ -318,3 +318,11 @@ end
     @test gradient(h, [2, 3]) - [1/2, 0] |> norm < 1e-6
 
 end
+
+@testset "Two components projecting to the same hypersurface" begin
+    @var a, b, x
+    F = System([a^2 - 4*b, (x - a + 1) * (x - a)], variables=[a, b, x])
+    # V(F) has two irreducible components that project down to V(a^2-4b)
+    h = ProjectedHypersurface(F, [a, b])
+    @test degree(h) == 2
+end
