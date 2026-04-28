@@ -89,7 +89,7 @@ function PseudoWitnessSet(
     tracker = Tracker(ParameterHomotopy(fixed(F_L; compile = compile), L.p, L.p))
     track_report = zeros(Bool, length(solutions(M))) # for keeping track of which paths are successful
 
-    PseudoWitnessSet(F, k, L, Wt, πW, EndgameTracker(tracker), track_report)
+    PseudoWitnessSet(F, k, L, Wt, πW, W, EndgameTracker(tracker), track_report)
 end
 
 witness_points(PWS::PseudoWitnessSet) = PWS.πW
