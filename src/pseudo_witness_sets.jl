@@ -10,6 +10,7 @@ struct PseudoWitnessSet
     L::Line
     Wt::Vector
     πW::Vector
+    W::WitnessSet
     tracker::EndgameTracker
     track_report::Vector{Bool}
 end
@@ -59,12 +60,14 @@ function PseudoWitnessSet(
         @warn "Irreducible component of higher multiplicity detected in the incidence variety."
     end
 
-
-
     # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
     M = monodromy_solve(F_L, solutions(E), L.p)
     Wt = solutions(M)
-    # πW = unique_points([w[1:k] for w in Wt])
+
+    # Form a WitnessSet
+    A = transpose(L.b) |> nullspace |> transpose
+    b = A * L.p
+    W = WitnessSet(CompiledSystem(F), LinearSubspace(A, b), [w[1:end-1] for w in Wt])
 
     if length(Wt)==0
         error("No witness points found.")
