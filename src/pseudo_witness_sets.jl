@@ -130,9 +130,3 @@ function get_s_and_Uvals!(Uvals, S, GC, PWS)
 
     nothing
 end
-
-function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
-    track!(GC.line_hypersurface_intersections, PWS, p)
-    get_s_and_Uvals!(GC.Uvals, GC.S, GC, PWS)
-    nothing
-end
