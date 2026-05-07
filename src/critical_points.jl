@@ -360,7 +360,7 @@ function _solve_and_trace(
         )
         if interrupted
             routing_points = expand_start_solutions ? real.(new_pts) : Vector{Float64}[]
-            return routing_points, result_intermediate, mon_result
+            return routing_points, nothing, mon_result
         end
         start_parameters!(H, intermediate_rhs)
         target_parameters!(H, zeros(ComplexF64, length(rhs0)))
