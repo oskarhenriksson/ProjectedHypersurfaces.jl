@@ -25,6 +25,13 @@ _is_interrupt_exception(e) =
     e isa InterruptException ||
     (e isa TaskFailedException && _is_interrupt_exception(e.task.exception))
 
+function _solve_homotopy(H, starts; catch_interrupt)
+    starts = collect(starts)
+    result = HomotopyContinuation.solve(H, starts; catch_interrupt = catch_interrupt)
+    interrupted = catch_interrupt && length(result) < length(starts)
+    return result, interrupted
+end
+
 """
     critical_points(r, S0, rhs0; kwargs...)
 
@@ -267,9 +274,17 @@ function _expand_start_solutions(
                 prob = SciMLBase.ODEProblem(g, start_pt, tspan)
                 sol = DE.solve(prob, reltol = 1e-6, abstol = 1e-6)
                 convergence_point = last(sol.u)
-                improved_point = newton(∇r, convergence_point) |> solution
-                push!(new_pts, improved_point)
-                gradient_success_count += 1
+                if expand_start_solutions_newton
+                    candidate_point = newton(∇r, convergence_point) |> solution
+                    residual_tolerance = 1e-10
+                else
+                    candidate_point = ComplexF64.(convergence_point)
+                    residual_tolerance = 1e-6
+                end
+                if norm(evaluate(∇r, candidate_point)) < residual_tolerance
+                    push!(new_pts, candidate_point)
+                    gradient_success_count += 1
+                end
             catch e
                 if _is_interrupt_exception(e)
                     catch_interrupt || rethrow(e)
@@ -294,12 +309,16 @@ function _expand_start_solutions(
         if !isempty(new_pts)
             start_parameters!(H, zeros(ComplexF64, length(rhs0)))
             target_parameters!(H, rhs0)
-            S0_new_sols = HC.solve(H, new_pts; catch_interrupt = catch_interrupt) |> solutions
+            S0_result, interrupted = _solve_homotopy(H, new_pts; catch_interrupt = catch_interrupt)
+            S0_new_sols = solutions(S0_result)
             number_of_old_sols = length(S0)
             S0 = HC.unique_points([S0; S0_new_sols])
             verbose && println(
                 "Traced to $(length(S0)-number_of_old_sols) additional start solutions for the monodromy.",
             )
+            if interrupted
+                return StartSolutionExpansionResult(S0, new_pts, true)
+            end
         end
     else
         S0 = [S0; new_pts]
@@ -330,28 +349,25 @@ function _solve_and_trace(
 
     ### Trace to ∇r=0
     if !monodromy_at_zero
-        if isempty(solutions(mon_result))
-            routing_points = expand_start_solutions ? real.(new_pts) : Vector{Float64}[]
-            return routing_points, nothing, mon_result
-        end
-
         intermediate_rhs = randn(ComplexF64, length(rhs0))
         start_parameters!(H, rhs0)
         target_parameters!(H, intermediate_rhs)
-        result_intermediate = HomotopyContinuation.solve(
+        monodromy_solutions = solutions(mon_result)
+        result_intermediate, interrupted = _solve_homotopy(
             H,
-            solutions(mon_result);
+            monodromy_solutions;
             catch_interrupt = catch_interrupt,
         )
-        if isempty(solutions(result_intermediate))
+        if interrupted
             routing_points = expand_start_solutions ? real.(new_pts) : Vector{Float64}[]
             return routing_points, result_intermediate, mon_result
         end
         start_parameters!(H, intermediate_rhs)
         target_parameters!(H, zeros(ComplexF64, length(rhs0)))
-        result = HomotopyContinuation.solve(
+        intermediate_solutions = solutions(result_intermediate)
+        result, _ = _solve_homotopy(
             H,
-            result_intermediate;
+            intermediate_solutions;
             catch_interrupt = catch_interrupt,
         )
         routing_points = real_solutions(result)

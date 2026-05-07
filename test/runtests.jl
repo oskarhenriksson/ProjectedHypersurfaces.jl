@@ -115,7 +115,7 @@ end
         expand_start_solutions_newton = false,
     )
     @test all(norm(∇r(z)-rhs0) < 1e-10 for z in S0_no_newton)
-    @test all(norm(∇r(z)) < 1e-10 for z in new_pts_no_newton)
+    @test all(norm(∇r(z)) < 1e-6 for z in new_pts_no_newton)
 
     S0, new_pts = ProjectedHypersurfaceRegions._expand_start_solutions(
         ∇r, H, S0_initial, rhs0, k;
@@ -130,6 +130,19 @@ end
     options = MonodromyOptions(target_solutions_count = 2)
     pts, res0, mon_res = critical_points(r, expand_start_solutions=false, options=options)
     @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+
+    empty_start_solutions = Vector{Vector{ComplexF64}}()
+    empty_routing_points, empty_result, empty_mon_res = ProjectedHypersurfaceRegions._solve_and_trace(
+        MS,
+        H,
+        empty_start_solutions,
+        rhs0,
+        Vector{Vector{ComplexF64}}();
+        expand_start_solutions = false,
+    )
+    @test isempty(empty_routing_points)
+    @test !isnothing(empty_result)
+    @test isempty(solutions(empty_result))
 
     pl = generate_plot(
         r,
