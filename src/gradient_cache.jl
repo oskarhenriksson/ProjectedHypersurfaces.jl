@@ -122,7 +122,7 @@ function GradientCache(PWS)
     UB = zeros(ComplexF64, d, n - k, k)
     A = zeros(ComplexF64, d, N, k, k) 
 
-    JsuF, JPF, JBF, HF, JxB, JxP, JPB = compute_systems(F, n, k, L.b)
+    JsuF, JPF, JBF, HF, JxB, JxP, JPB = compute_systems(F, n, k, L.direction)
 
 
     # 

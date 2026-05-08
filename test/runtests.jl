@@ -252,22 +252,6 @@ end;
     @test isempty(failed_info)
 
 end;
-
-@testset "Multiplicity detection" begin
-    Random.seed!(1234)
-    @var a b x
-    F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
-    PseudoWitnessSet(F, 2) 
-    Logging.with_logger(Test.TestLogger(; min_level=Logging.Debug)) do
-        logger = Logging.current_logger()
-        PseudoWitnessSet(F, 2)
-        @test any(r -> r.level == Logging.Warn &&
-                       contains(r.message, "Irreducible component of higher multiplicity detected in the incidence variety."),
-                  logger.logs)
-    end
-end
-
-
 @testset "Hypersurface evaluations for quadratic" begin
 
     # Set up the system
@@ -284,7 +268,7 @@ end
     # Test the evaluation formula
     pt = [1, 1]
     log_abs_h = p -> log(abs(p[1]^2 - 4*p[2]))
-    direction = h.PWS.L.b
+    direction = h.PWS.L.direction
     C = log(abs(direction[1]^2))
     @test h(pt) + C - log_abs_h(pt) |> abs < 1e-6
 
@@ -299,4 +283,36 @@ end
     [8*p[1]/(p[1]^2 - 4*p[2])^2  -16/(p[1]^2 - 4*p[2])^2]]
     @test Hess_log_abs_h(pt) - ProjectedHypersurfaceRegions.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
 
+end
+@testset "Noninjective projection" begin
+    @var x y z
+    F = System([z-x^2, y], variables = [x,y, z])
+    h = ProjectedHypersurface(F, [y, z])
+
+    @test degree(h) == 1 # the downstairs degree should be 1
+
+    # h(y,z) = y (up to a constant) so gradient(h, [y, z]) = [1/y, 0]
+    @test gradient(h, [2, 3]) - [1/2, 0] |> norm < 1e-6
+
+end
+
+@testset "Two components projecting to the same hypersurface" begin
+    @var a, b, x
+    F = System([a^2 - 4*b, (x - a + 1) * (x - a)], variables=[a, b, x])
+    # V(F) has two irreducible components that project down to V(a^2-4b)
+    h = ProjectedHypersurface(F, [a, b])
+    @test degree(h) == 2
+end
+
+@testset "Empty PWS" begin
+    Random.seed!(1234)
+    @var a b x
+    F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
+    @test_throws "No witness points found." PseudoWitnessSet(F, 2)
+end
+
+@testset "Multiplicity detection" begin
+    @var a, b, x
+    F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
+    @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
 end

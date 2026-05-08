@@ -36,25 +36,9 @@ radical_generators = [p[1]*x[1] + p[1]*x[2] - 2*p[1]*x[3] + p[2]*x[3]^2 - p[2]*x
 F_radical = System(radical_generators, variables = [a; b; x])
 F_sq = System(randn(4, length(F_radical)) * radical_generators, variables = [a; b; x])
 h_sq = ProjectedHypersurface(F_sq, [a, b])
-PWS_sq = h_sq.PWS
+sort(log.(norm.(F.(h_sq.PWS.W)))) |> plot
 
-# Check which witness points solve the original systems 
-sort(log.(norm.(F.(witness_points(h_sq.PWS))))) |> plot
-
-# Pick a tolerance
-tol = 1e-6
-
-# Filter out the relevant solutions and build a new routing function
-filter = findall(pt->norm(F(pt))<tol, witness_points(h_sq.PWS))
-PWS_new = PseudoWitnessSet(
-    PWS_sq.F, 
-    PWS_sq.k, 
-    PWS_sq.L, 
-    PWS_sq.tW[filter], 
-    PWS_sq.tracker,
-    PWS_sq.track_report[filter]
-)
-
+PWS_new = PseudoWitnessSet(F_sq, 2, filter_condition = (pt -> norm(F(pt)) < 1e-6))
 
 h = ProjectedHypersurface(F, [a, b]; PWS=PWS_new)
 r = RoutingFunction(h; c=[0.02,0.2], g = [a,b, b-0.5])
@@ -105,14 +89,13 @@ savefig("figures/allee_original_zoomed_in.svg")
 # ROUTING FUNCTION FROM RADICAL GENERATORS
 
 # Previously computed routing points
-pts = [
-    [0.0488373189929933, 0.17529504250751],
-    [1.2278101836407234, 0.27333352325137683],
-    [0.03649953760686965, 0.19538098740286294],
-    [0.019221143323682563, 0.3403529277188622],
-    [0.002012479240850282, 0.40953865518224003],
-    [0.03600678060438847, 0.36033495215448375],
-    [0.046225501340473096, 0.47852790907543874]
+pts = [[0.055589798001425106, 0.20458114869092572]
+    [1.087677447086965, 0.283186049925421]
+    [0.03893320710527537, 0.22760515612129203]
+    [0.0207223762777128, 0.3497569506736974]
+    [0.005192953854625316, 0.3934392610042774]
+    [0.03634241483471314, 0.3616901975928537]
+    [0.0468647920529527, 0.4669511862715351]
 ]
 
 # Check that all points are critical
