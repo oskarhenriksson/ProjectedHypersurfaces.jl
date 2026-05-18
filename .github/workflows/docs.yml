@@ -7,7 +7,9 @@ on:
       - 'docs/**'
       - 'Project.toml'
       - 'Manifest.toml'
+      - 'docs/Project.toml'
       - '.github/workflows/**'
+
 
   push:
     branches:
@@ -19,7 +21,9 @@ on:
       - 'docs/**'
       - 'Project.toml'
       - 'Manifest.toml'
+      - 'docs/Project.toml'
       - '.github/workflows/**'
+
 
   workflow_dispatch:
 
