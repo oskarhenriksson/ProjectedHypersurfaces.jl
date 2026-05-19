@@ -1,5 +1,7 @@
 
 # ProjectedHypersurfaceRegions.jl
+[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhenriksson.github.io/ProjectedHypersurfaceRegions.jl/dev/)
+[![CI](https://github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl/actions/workflows/ci.yml)
 
 This repository implements "numerical elimination" techniques for representing, and computing the complement of, real hypersurfaces that arise through projection of a known variety.
 

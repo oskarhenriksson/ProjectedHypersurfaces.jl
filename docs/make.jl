@@ -7,3 +7,7 @@ makedocs(
     format = Documenter.HTML(edit_link = "main"),
     checkdocs = :exports,
 )
+
+deploydocs(
+    repo = "github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl.git",
+)
