@@ -1,11 +1,4 @@
-using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
-Pkg.instantiate()
-
 using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
-
-
-
 @testset "Quadratic discriminant" begin
     
     @var a b x
