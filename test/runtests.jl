@@ -5,6 +5,9 @@ using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b]);
 
+    @test degree(h) == 2
+    @test trace_test(h) < 1e-10
+
     c = [13, 2]
 
     r = RoutingFunction(h; c=c);
@@ -42,6 +45,7 @@ end
     ∇r = RoutingGradient(r)
 
     @test degree(h) == 4
+    @test trace_test(h) < 1e-6
     @test denominator_exponent(r) == 3
 
     # Symbolic routing function
@@ -200,6 +204,7 @@ end
 
     # Degree of the discriminant
     @test degree(h) == 12
+    @test trace_test(h) < 1e-6
 
     h_symbolic = 314928 * w[1]^8 * w[2]^4 + 1259712 * w[1]^7 * w[2]^5 + 1889568 * w[1]^6 * w[2]^6 + 1259712 * w[1]^5 * w[2]^7 +
           314928 * w[1]^4 * w[2]^8 + 139968 * w[1]^10 + 699840 * w[1]^9 * w[2]  + 1277208 * w[1]^8 * w[2]^2 +
@@ -331,7 +336,6 @@ end
 
     PWS = h.PWS
     @test trace_test(PWS) < 1e-10
-
     # Create an artificial failed PWS
     PWS_messed_up = PseudoWitnessSet(PWS.F,
         PWS.k,

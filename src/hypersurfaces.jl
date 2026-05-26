@@ -27,6 +27,8 @@ end
 
 degree(h::ProjectedHypersurface) = degree(h.PWS)
 
+trace_test(h::ProjectedHypersurface) = trace_test(h.PWS)
+
 Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurface of degree $(degree(h)) in ambient dimension $(nvariables(h))")
     
 ModelKit.variables(h::ProjectedHypersurface{TC}) where {TC} = h.projection_vars
