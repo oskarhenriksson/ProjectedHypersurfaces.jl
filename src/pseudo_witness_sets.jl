@@ -1,4 +1,4 @@
-export PseudoWitnessSet, degree, total_dim, system
+export PseudoWitnessSet, degree, total_dim, system, trace_test
 struct Line{T<:Number}
     point::Vector{T}
     direction::Vector{T}
@@ -122,6 +122,13 @@ function PseudoWitnessSet(
     )
 end
 
+@doc raw"""
+    u vector of complex intersection points 
+    PWS pseudowitness set
+    p target point for homotopy
+    PWS.tZ contains the coordinates (t,Z) where line (L.direction*t+L.point;Z) intersects V(F)
+"""
+
 function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
     tracker = PWS.tracker
     target_parameters!(tracker, p)
@@ -152,4 +159,42 @@ function get_s_and_Uvals!(Uvals, S, GC, PWS)
     end
 
     nothing
+end
+
+function track_projected_point(PWS::PseudoWitnessSet,p)
+    tZ = deepcopy(PWS.tZ)
+    track!(tZ,PWS,p)
+    b = PWS.L.direction
+    map(tZ) do tz
+        t=first(tz)
+        b*t+p
+    end
+end
+
+function trace_test(PWS::PseudoWitnessSet)
+
+    L = PWS.L
+    p = L.point
+    b = L.direction
+    πW = PWS.πW
+
+    s₀ = sum(πW)
+    v = randn(ComplexF64,PWS.k)
+    #translate our linear space by v
+    p₋₁ = p-v
+    p₁ = p+v
+    πW₋₁ = track_projected_point(PWS,p₋₁)
+    all(PWS.track_report)||return nothing
+
+    πW₁ = track_projected_point(PWS,p₁)
+    all(PWS.track_report)||return nothing
+
+    s₋₁ = sum(πW₋₁)
+    s₁ = sum(πW₁)
+
+    M = [s₋₁ s₀ s₁; 1 1 1]
+    singvals = LinearAlgebra.svdvals(M)
+    trace = singvals[3] / singvals[1]
+
+    trace
 end
