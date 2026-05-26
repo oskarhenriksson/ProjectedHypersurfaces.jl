@@ -1,4 +1,4 @@
-export ProjectedHypersurface, evaluate, gradient, hessian, degree
+export ProjectedHypersurface, evaluate, gradient, hessian, degree, trace_test
 
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
