@@ -322,3 +322,28 @@ end
     F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
     @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
 end
+
+@testset "Trace test" begin
+
+    @var a b x
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    PWS = h.PWS
+    @test trace_test(PWS) < 1e-10
+
+    # Create an artificial failed PWS
+    PWS_messed_up = PseudoWitnessSet(PWS.F,
+        PWS.k,
+        PWS.L,
+        PWS.W[[1]],
+        PWS.πW[[1]],
+        PWS.tZ[[1]],
+        PWS.tracker,
+        PWS.track_report[[1]]
+    )
+
+    @test trace_test(PWS_messed_up) > 1e-6
+
+
+end
