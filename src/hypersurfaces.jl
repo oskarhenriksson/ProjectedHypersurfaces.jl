@@ -32,6 +32,33 @@ Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurfac
 ModelKit.variables(h::ProjectedHypersurface{TC}) where {TC} = h.projection_vars
 ModelKit.nvariables(h::ProjectedHypersurface{TC}) where {TC} = length(h.projection_vars)
 
+function Base.contains(
+    h::ProjectedHypersurface,
+    p::AbstractVector;
+    atol = sqrt(eps(Float64)),
+    residual_atol = atol,
+)
+    length(p) == nvariables(h) || throw(ArgumentError("Expected $(nvariables(h)) coordinates."))
+
+    PWS, GC = h.PWS, h.GC
+    track!(GC, PWS, p)
+
+    direction_norm = norm(PWS.L.direction)
+    for (track_succeeded, sol) in zip(PWS.track_report, GC.line_hypersurface_intersections)
+        if !track_succeeded || !all(isfinite, sol)
+            continue
+        end
+
+        t = sol[1]
+        w = sol[2:end]
+        if abs(t) * direction_norm <= atol && norm(PWS.F([p; w])) <= residual_atol
+            return true
+        end
+    end
+
+    false
+end
+
 function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     PWS, GC = h.PWS, h.GC
 
