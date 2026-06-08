@@ -288,3 +288,21 @@ function generate_plot(
         legendfontsize = 6,
     )
 end
+
+function generate_plot(
+    r::RoutingFunction,
+    routing_result::RoutingPointsResult,
+    partition_result::PartitionResult;
+    kwargs...,
+)
+    isnothing(morse_indices(partition_result)) &&
+        error("Cannot generate a plot from a partition result with no Morse indices.")
+
+    generate_plot(
+        r,
+        routing_points(routing_result),
+        partitions(partition_result),
+        morse_indices(partition_result);
+        kwargs...,
+    )
+end

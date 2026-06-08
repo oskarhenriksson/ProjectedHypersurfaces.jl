@@ -43,10 +43,16 @@ r = RoutingFunction(h; c=center);
 
 # Routing points
 # pts = read_solutions("./results/3RPRv1/routing_points.txt") |> real
-pts, res, mon_res = critical_points(r)
+routing_result = critical_points(r)
+pts = routing_points(routing_result)
+res = trace_result(routing_result)
+mon_res = monodromy_result(routing_result)
 
 # Connected components 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 time_end_round1 = time()
 println("Computation time for round 1: $(time_end_round1 - time_start_round1) seconds")
@@ -60,10 +66,10 @@ function analyze_and_save_result()
 
     println("Connected components: $(G)")
     println("Indicies: $(idx)")
-    println("Failed info: $(failed_info)")
+    println("Failed info: $(failures)")
     println()
 
-    generate_plot(r, pts, G, idx;
+    generate_plot(r, routing_result, partition_result;
         root_counting_system=System(f, variables=vcat(p, φ), parameters=projection_variables)
     )
 end
@@ -79,9 +85,15 @@ options = MonodromyOptions(
     parameter_sampler=p -> 100 .* randn(ComplexF64, length(p)), # larger loops
     max_loops_no_progress=10 # stopping criterion
 )
-pts, res, mon_res = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
+routing_result = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
+pts = routing_points(routing_result)
+res = trace_result(routing_result)
+mon_res = monodromy_result(routing_result)
 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 time_end_round2 = time()
 println("Additional computation time for round 2: $(time_end_round2 - time_start_round2) seconds")
@@ -94,4 +106,3 @@ if length(solutions(mon_res)) > old_number_of_monodromy_solutions
 else
     println("No new solutions found in the additional monodromy round.")
 end
-

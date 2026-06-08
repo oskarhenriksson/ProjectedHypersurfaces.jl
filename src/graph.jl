@@ -37,7 +37,7 @@ function _index_list(∇r, crit_pts)
         index, unstable_eigenvectors, flag = index_unstable_eigenvector!(u, U, ∇r, a)
         if flag == true
             flag_prime = true
-            return nothing, nothing, nothing, flag_prime
+            return nothing, nothing, flag_prime
         end
 
         push!(index_list, index)
@@ -64,7 +64,7 @@ end
 
 function partition_of_critical_points(
     r::RoutingFunction,
-    crit_pts::Vector{Vector{Float64}},
+    crit_pts::AbstractVector{<:AbstractVector{<:Real}},
     epsilon::Float64 = 1e-6,
     reltol::Float64 = 1e-6,
     abstol::Float64 = 1e-9,
@@ -75,7 +75,7 @@ function partition_of_critical_points(
     index_list, unstable_eigenvector_list, flag_prime = _index_list(∇r, crit_pts)
     if flag_prime == true
         @warn "The Hessian is almost singular for some critical points"
-        return nothing
+        return PartitionResult(Vector{Vector{Int}}(), nothing, [], :singular_hessian)
     end
 
 
@@ -90,7 +90,7 @@ function partition_of_critical_points(
 
     if count_index_0 == 1
         # we do not need to do any path tracking in this case
-        return [critical_points_indices], [], []
+        return PartitionResult([critical_points_indices], Int[], [], :success)
     end
 
 
@@ -205,5 +205,13 @@ function partition_of_critical_points(
     for par in partition
         push!(partition_critical_point_indices, @view(critical_points_indices[par]))
     end
-    return partition_critical_point_indices, index_list, failed_info_list
+    code = isempty(failed_info_list) ? :success : :partial_success
+    return PartitionResult(partition_critical_point_indices, index_list, failed_info_list, code)
 end
+
+partition_of_critical_points(
+    r::RoutingFunction,
+    result::RoutingPointsResult,
+    args...;
+    kwargs...,
+) = partition_of_critical_points(r, routing_points(result), args...; kwargs...)

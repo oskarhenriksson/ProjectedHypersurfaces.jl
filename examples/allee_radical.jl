@@ -71,7 +71,10 @@ pts_original = [[1.2648270055555684, 0.23668758954766242],
     [0.05913176450416948, 0.46985465616956895]
 ]
 
-G_original, idx_original, failed_info_original = partition_of_critical_points(r_original, pts_original)
+partition_result_original = partition_of_critical_points(r_original, pts_original)
+G_original = partitions(partition_result_original)
+idx_original = morse_indices(partition_result_original)
+failures_original = failed_info(partition_result_original)
 
 pl_original_smaller = generate_plot(
     r_original, pts_original,
@@ -101,7 +104,10 @@ pts = [[0.055589798001425106, 0.20458114869092572]
 # Check that all points are critical
 ∇r.(pts)
 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, pts)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 pl_radical_smaller = generate_plot(
     r, pts,

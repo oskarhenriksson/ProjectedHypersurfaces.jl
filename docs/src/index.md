@@ -73,8 +73,9 @@ Routing function for projected hypersurface
 We find the critical points via the `critical_points` function:
 
 ```julia-repl   
-julia> routing_points, res, mon_res = critical_points(r);
-julia> routing_points
+julia> routing_result = critical_points(r);
+
+julia> routing_points(routing_result)
 4-element Vector{Vector{Float64}}:
  [13.040296300414134, 1.993819726256856]
  [3.2168112092392143, 8.082538361382136]
@@ -85,14 +86,14 @@ julia> routing_points
 Finally, we connect the critical points that belong to the same component of the complement:
 
 ```julia-repl
-julia> G, idx, failed_info = partition_of_critical_points(r, routing_points);
+julia> partition_result = partition_of_critical_points(r, routing_result);
 ```
 
-The first output `G` describes the connected components. We see that the first, third and fourth critical points belong to the same connected component, and that the second one belongs to its own component:
+The partitions describe the connected components. We see that the first, third and fourth critical points belong to the same connected component, and that the second one belongs to its own component:
 
 ```julia-repl
-julia> G
-2-element Vector{Any}:
+julia> partitions(partition_result)
+2-element Vector{Vector{Int64}}:
  [1, 3, 4]
  [2]
 ```

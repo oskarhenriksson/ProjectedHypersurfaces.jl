@@ -94,8 +94,22 @@ end
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    pts, res0, mon_res = critical_points(r, start_grid_width=0, options=options)    
-    @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+    routing_result = critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
+    repeated_routing_result =
+        critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
+    @test routing_result isa RoutingPointsResult
+    @test solutions(routing_result) == routing_points(routing_result)
+    @test real_solutions(routing_result) == routing_points(routing_result)
+    @test parameters(routing_result) == zeros(ComplexF64, size(∇r, 1))
+    @test all(norm(evaluate(∇r, z, parameters(routing_result))) < 1e-12 for z in solutions(routing_result))
+    @test trace_result(routing_result) isa Result
+    @test monodromy_result(routing_result) isa MonodromyResult
+    @test seed(routing_result) == seed(monodromy_result(routing_result))
+    @test parameters(monodromy_result(routing_result)) == parameters(monodromy_result(repeated_routing_result))
+    @test routing_points(routing_result) == routing_points(repeated_routing_result)
+    @test !applicable(iterate, routing_result)
+    @test !isempty(sprint(show, routing_result))
+    @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
 
     pl = generate_plot(
         r,
@@ -146,8 +160,8 @@ end;
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    pts, res0, mon_res = critical_points(r, start_grid_width=0, options=options)   
-    @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+    routing_result = critical_points(r, start_grid_width=0, options=options)
+    @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
 
 end;
 
@@ -175,8 +189,8 @@ end;
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    pts, res0, mon_res = critical_points(r, start_grid_width=0, options=options)   
-    @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+    routing_result = critical_points(r, start_grid_width=0, options=options)
+    @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
 
 end
 
@@ -238,11 +252,18 @@ end;
 
     @test all(norm.(∇r.(pts)) .< 1e-12) 
 
-    G, idx, failed_info = partition_of_critical_points(r, pts)
+    partition_result = partition_of_critical_points(r, pts)
+    partition_result_from_routing_result =
+        partition_of_critical_points(r, RoutingPointsResult(pts, nothing, nothing))
 
-    @test sort(G) == [[1, 2, 4], [3]]
-    @test idx == [1, 0, 0, 0]
-    @test isempty(failed_info)
+    @test partition_result isa PartitionResult
+    @test sort(partitions(partition_result)) == [[1, 2, 4], [3]]
+    @test morse_indices(partition_result) == [1, 0, 0, 0]
+    @test isempty(failed_info(partition_result))
+    @test return_code(partition_result) == :success
+    @test partitions(partition_result_from_routing_result) == partitions(partition_result)
+    @test !applicable(iterate, partition_result)
+    @test !isempty(sprint(show, partition_result))
 
 end;
 @testset "Hypersurface evaluations for quadratic" begin
