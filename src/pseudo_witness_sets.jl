@@ -171,6 +171,22 @@ function track_projected_point(PWS::PseudoWitnessSet,p)
     end
 end
 
+
+"""
+    trace_test(PWS::PseudoWitnessSet)
+
+Performs a trace test for completness of a pseudo-witness set; see [^LRS18] for details.
+
+Returns a trace, which theoretically should be zero if and only if the pseudo-witness set 
+is complete (has all the witness points, meaning that we have correctly computed the degree of the variety).
+
+Since we are working with floating point arithmetic, it will likely not be exactly zero. 
+A very low trace (e.g. on the order of 1e-16) is a strong heutistic indication that the pseudo-witness set is complete, 
+but does not constitute a proof. 
+
+[^LRS18] Leykin, Anton, Jose Israel Rodriguez, and Frank Sottile. "Trace test." Arnold Mathematical Journal 4.1 (2018): 113-125.
+
+"""
 function trace_test(PWS::PseudoWitnessSet)
 
     L = PWS.L
