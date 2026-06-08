@@ -184,10 +184,10 @@ function trace_test(PWS::PseudoWitnessSet)
     p₋₁ = p-v
     p₁ = p+v
     πW₋₁ = track_projected_point(PWS,p₋₁)
-    all(PWS.track_report)||return nothing
+    @assert all(PWS.track_report) "Failed paths detected"
 
     πW₁ = track_projected_point(PWS,p₁)
-    all(PWS.track_report)||return nothing
+    @assert all(PWS.track_report) "Failed paths detected"
 
     s₋₁ = sum(πW₋₁)
     s₁ = sum(πW₁)
