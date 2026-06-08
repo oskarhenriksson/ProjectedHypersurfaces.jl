@@ -123,16 +123,19 @@ function PseudoWitnessSet(
 end
 
 @doc raw"""
-    u vector of complex intersection points 
-    PWS pseudowitness set
-    p target point for homotopy
-    PWS.tZ contains the coordinates (t,Z) where line (L.direction*t+L.point;Z) intersects V(F)
-"""
+    track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
 
+Given a pseudo-witness set `PWS` and a point `p` in the downstairs space, move the line downstains so that
+it passes through `p` and track the pseudo-witness points. 
+
+The resulting points are stored in `u` and the success of each track is recorded in `PWS.track_report`.
+
+"""
 function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
     tracker = PWS.tracker
     target_parameters!(tracker, p)
-    # Update one tracker instance in place for each target parameter.
+    # PWS.tZ contains the coordinates (t,Z) for the points where the line 
+    # (PWS.L.direction*t+PWS.L.point; Z) intersects V(F)
     for (l, w) in enumerate(PWS.tZ)
             HC.track!(tracker, w, 1)
             copyto!(u[l], tracker.tracker.state.x)
