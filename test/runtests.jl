@@ -245,6 +245,19 @@ end;
     @test isempty(failed_info)
 
 end;
+
+@testset "Projected hypersurface membership" begin
+    Random.seed!(1234)
+    @var a b x
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    @test contains(h, [2.0, 1.0])
+    @test !contains(h, [3.0, 1.0])
+    @test_throws ArgumentError contains(h, [2.0])
+end
+
+
 @testset "Hypersurface evaluations for quadratic" begin
 
     # Set up the system
