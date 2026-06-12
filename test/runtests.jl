@@ -103,9 +103,11 @@ end
     @test all(norm(evaluate(∇r, z, parameters(routing_result))) < 1e-12 for z in solutions(routing_result))
     @test trace_result(routing_result) isa Result
     @test monodromy_result(routing_result) isa MonodromyResult
-    @test return_code(routing_result) == monodromy_result(routing_result).returncode
+    @test !applicable(return_code, routing_result)
     @test !applicable(iterate, routing_result)
-    @test !isempty(sprint(show, routing_result))
+    routing_display = sprint(show, routing_result)
+    @test !isempty(routing_display)
+    @test !occursin("return_code", routing_display)
     @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
 
     pl = generate_plot(
@@ -260,7 +262,10 @@ end;
     @test return_code(partition_result) == :success
     @test partitions(partition_result_from_routing_result) == partitions(partition_result)
     @test !applicable(iterate, partition_result)
-    @test !isempty(sprint(show, partition_result))
+    partition_display = sprint(show, partition_result)
+    @test !isempty(partition_display)
+    @test occursin("return_code → :success", partition_display)
+    @test !occursin("::success", partition_display)
 
 end;
 @testset "Hypersurface evaluations for quadratic" begin

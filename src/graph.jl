@@ -90,9 +90,8 @@ function partition_of_critical_points(
 
     if count_index_0 == 1
         # we do not need to do any path tracking in this case
-        return PartitionResult([critical_points_indices], Int[], [], :success)
+        return PartitionResult([critical_points_indices], index_list, [], :success)
     end
-
 
     failed_info_list = []
     ProgressMeter.@showprogress for i = 1:length(index_list)

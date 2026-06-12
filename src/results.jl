@@ -62,14 +62,6 @@ Return the underlying monodromy computation result.
 """
 monodromy_result(R::RoutingPointsResult) = R.monodromy_result
 
-"""
-    return_code(result)
-
-Return a symbolic status code for a routing or partition result.
-"""
-return_code(R::RoutingPointsResult) =
-    isnothing(monodromy_result(R)) ? :unknown : monodromy_result(R).returncode
-
 solutions(R::RoutingPointsResult) = routing_points(R)
 real_solutions(R::RoutingPointsResult; kwargs...) = routing_points(R)
 nsolutions(R::RoutingPointsResult) = length(routing_points(R))
@@ -86,7 +78,7 @@ critical point indices, and [`failed_info`](@ref) for failed connection attempts
 """
 struct PartitionResult{P,I,F}
     partitions::P
-    morse_indices::I
+    morse_indices::I # TODO: this is a strange output to expose to users, since it is indexing yet another list you must reference. Considering changing this to a Dict or something.
     failed_info::F
     return_code::Symbol
 end
@@ -112,6 +104,12 @@ morse_indices(R::PartitionResult) = R.morse_indices
 Return information collected from failed connection attempts.
 """
 failed_info(R::PartitionResult) = R.failed_info
+
+"""
+    return_code(result::PartitionResult)
+
+Return a symbolic status code for a partition result.
+"""
 return_code(R::PartitionResult) = R.return_code
 
 """
@@ -130,7 +128,6 @@ function Base.show(io::IO, R::RoutingPointsResult)
     header = "RoutingPointsResult with $npts $(_plural("routing point", npts))"
     println(io, header)
     println(io, "="^length(header))
-    println(io, "• return_code → :", return_code(R))
     if isnothing(trace_result(R))
         println(io, "• raw trace results → unknown")
     else
@@ -151,7 +148,7 @@ function Base.show(io::IO, R::PartitionResult)
     header = "PartitionResult with $npars $(_plural("partition", npars))"
     println(io, header)
     println(io, "="^length(header))
-    println(io, "• return_code → :", return_code(R))
+    println(io, "• return_code → :$(return_code(R))")
     println(io, "• $(nfailures) failed $(_plural("connection", nfailures))")
     print(io, "• morse_indices → ", isnothing(morse_indices(R)) ? "not computed" : length(morse_indices(R)))
 end
