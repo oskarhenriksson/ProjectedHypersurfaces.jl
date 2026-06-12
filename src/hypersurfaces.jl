@@ -1,4 +1,4 @@
-export ProjectedHypersurface, evaluate, gradient, hessian, degree
+export ProjectedHypersurface, evaluate, gradient, hessian, degree, trace_test
 
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
@@ -26,6 +26,18 @@ function ProjectedHypersurface(
 end
 
 degree(h::ProjectedHypersurface) = degree(h.PWS)
+
+
+"""
+    trace_test(h::ProjectedHypersurface)
+
+Performs a trace test to vertify completeness of the underlying pseduo-witness set and therefore correctness of the degree.
+A value close to zero (e.g., in the order to 1e-16) indicates that the pseudo-witness set is likely complete.
+
+See [`trace_test(::PseudoWitnessSet)`](@ref) for details.
+
+"""
+trace_test(h::ProjectedHypersurface) = trace_test(h.PWS)
 
 Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurface of degree $(degree(h)) in ambient dimension $(nvariables(h))")
     

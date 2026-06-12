@@ -4,7 +4,7 @@
 
 using Random, Plots, LinearAlgebra,  ImplicitPlots, ProjectedHypersurfaceRegions
 
-Random.seed!(1234)
+Random.seed!(123)
 
 # Set up incidence variety of discriminant
 @var a b x[1:3]
@@ -38,9 +38,13 @@ F_sq = System(randn(4, length(F_radical)) * radical_generators, variables = [a; 
 h_sq = ProjectedHypersurface(F_sq, [a, b])
 sort(log.(norm.(F.(h_sq.PWS.W)))) |> plot
 
-PWS_new = PseudoWitnessSet(F_sq, 2, filter_condition = (pt -> norm(F(pt)) < 1e-6))
+PWS_new = PseudoWitnessSet(F_sq, 2, filter_condition = (pt -> norm(F(pt)) < 1e-4))
 
 h = ProjectedHypersurface(F, [a, b]; PWS=PWS_new)
+degree(h)
+trace_test(h)
+
+
 r = RoutingFunction(h; c=[0.02,0.2], g = [a,b, b-0.5])
 ∇r = RoutingGradient(r)
 
@@ -48,7 +52,7 @@ r = RoutingFunction(h; c=[0.02,0.2], g = [a,b, b-0.5])
 d = degree(h)
 
 # Test evaluation
-r([0.01,0.1]) #approximately -94.77
+r([0.01,0.1])
 
 # System used for certified root counting
 FP_allee = System(steady_state, variables = x, parameters = [a; b])
@@ -89,16 +93,15 @@ savefig("figures/allee_original_zoomed_in.svg")
 # ROUTING FUNCTION FROM RADICAL GENERATORS
 
 # Previously computed routing points
-pts = [[0.055589798001425106, 0.20458114869092572]
-    [1.087677447086965, 0.283186049925421]
-    [0.03893320710527537, 0.22760515612129203]
-    [0.0207223762777128, 0.3497569506736974]
-    [0.005192953854625316, 0.3934392610042774]
-    [0.03634241483471314, 0.3616901975928537]
-    [0.0468647920529527, 0.4669511862715351]
+pts = [[0.055589798000619875, 0.2045811486869807], 
+    [1.0876774474050412, 0.2831860499258381], 
+    [0.038933207105874466, 0.22760515612401028], 
+    [0.020722376283910805, 0.349756950729071], 
+    [0.005192953854662725, 0.39343926101839477], 
+    [0.03634241480971159, 0.36169019748921266], 
+    [0.046864792052222624, 0.4669511862494122]
 ]
 
-# Check that all points are critical
 ∇r.(pts)
 
 G, idx, failed_info = partition_of_critical_points(r, pts)
