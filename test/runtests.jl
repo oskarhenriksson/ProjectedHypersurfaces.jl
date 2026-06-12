@@ -94,9 +94,8 @@ end
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    routing_result = critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
-    repeated_routing_result =
-        critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
+    @test_throws MethodError critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
+    routing_result = critical_points(r, start_grid_width=0, options=options)
     @test routing_result isa RoutingPointsResult
     @test solutions(routing_result) == routing_points(routing_result)
     @test real_solutions(routing_result) == routing_points(routing_result)
@@ -104,9 +103,7 @@ end
     @test all(norm(evaluate(∇r, z, parameters(routing_result))) < 1e-12 for z in solutions(routing_result))
     @test trace_result(routing_result) isa Result
     @test monodromy_result(routing_result) isa MonodromyResult
-    @test seed(routing_result) == seed(monodromy_result(routing_result))
-    @test parameters(monodromy_result(routing_result)) == parameters(monodromy_result(repeated_routing_result))
-    @test routing_points(routing_result) == routing_points(repeated_routing_result)
+    @test return_code(routing_result) == monodromy_result(routing_result).returncode
     @test !applicable(iterate, routing_result)
     @test !isempty(sprint(show, routing_result))
     @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)

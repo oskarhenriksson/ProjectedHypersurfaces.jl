@@ -22,18 +22,15 @@ function critical_points(
         parameter_sampler = p -> 10 .* randn(ComplexF64, length(p)),
         max_loops_no_progress = 15
     ),
-    seed = rand(UInt32),
 )
 
     ∇r = RoutingGradient(r)
-    rng = Random.MersenneTwister(seed)
 
     # Step 1: Setup monodromy solver
     MS, H, S0, rhs0, k = _setup_monodromy_solver(
         ∇r, S0, rhs0;
         monodromy_at_zero = monodromy_at_zero,
         options = options,
-        rng = rng,
     )
 
     # Step 2: Expand start solutions via Newton's method and gradient flow
@@ -51,8 +48,6 @@ function critical_points(
         MS, H, S0, rhs0, new_pts;
         monodromy_at_zero = monodromy_at_zero,
         start_grid_width = start_grid_width,
-        seed = seed,
-        rng = rng,
     )
 end
 
@@ -72,11 +67,10 @@ function _setup_monodromy_solver(
         parameter_sampler = p -> 10 .* randn(ComplexF64, length(p)),
         max_loops_no_progress = 15
     ),
-    rng = Random.default_rng(),
 )
     k = size(∇r, 2) # number of variables
     p1 = zeros(k)
-    q1 = randn(rng, k)
+    q1 = randn(k)
     H = RoutingPointsHomotopy(∇r, p1, q1)
 
     ### Use monodromy to the system ∇r = rhs0 where we view the right-hand side are the parameters of the system
@@ -103,7 +97,7 @@ function _setup_monodromy_solver(
     #### set up start pair
     if !monodromy_at_zero
         if isnothing(rhs0) || isnothing(S0)
-            s0 = randn(rng, ComplexF64, k)
+            s0 = randn(ComplexF64, k)
             rhs0 = evaluate(∇r, s0)
             S0 = [s0]
         end
@@ -248,17 +242,14 @@ function _solve_and_trace(
     new_pts::AbstractVector{<:AbstractVector{<:Number}};
     monodromy_at_zero = false,
     start_grid_width = 5,
-    seed = rand(UInt32),
-    rng = Random.default_rng(),
 )
     ### Monodromy
-    isnothing(seed) || Random.seed!(seed)
-    mon_result = monodromy_solve(MS, S0, rhs0, seed)
+    mon_result = monodromy_solve(MS, S0, rhs0, rand(UInt32))
     target_parameters = zeros(ComplexF64, length(rhs0))
 
     ### Trace to ∇r=0
     if !monodromy_at_zero
-        intermediate_rhs = randn(rng, ComplexF64, length(rhs0))
+        intermediate_rhs = randn(ComplexF64, length(rhs0))
         start_parameters!(H, rhs0)
         target_parameters!(H, intermediate_rhs)
         result_intermediate = HomotopyContinuation.solve(H, solutions(mon_result))

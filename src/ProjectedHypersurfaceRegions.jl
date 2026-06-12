@@ -1,5 +1,5 @@
 module ProjectedHypersurfaceRegions
-using HomotopyContinuation, LinearAlgebra, OrdinaryDiffEq, SciMLBase, LightGraphs, ProgressMeter, Random
+using HomotopyContinuation, LinearAlgebra, OrdinaryDiffEq, SciMLBase, LightGraphs, ProgressMeter
 
 const HC = HomotopyContinuation
 const DE = OrdinaryDiffEq

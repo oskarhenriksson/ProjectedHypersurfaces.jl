@@ -10,7 +10,7 @@ export RoutingPointsResult,
     npartitions
 
 import HomotopyContinuation:
-    solutions, real_solutions, nsolutions, results, nresults, seed
+    solutions, real_solutions, nsolutions, results, nresults
 
 """
     RoutingPointsResult
@@ -76,7 +76,6 @@ nsolutions(R::RoutingPointsResult) = length(routing_points(R))
 results(R::RoutingPointsResult; kwargs...) = results(trace_result(R); kwargs...)
 nresults(R::RoutingPointsResult; kwargs...) = nresults(trace_result(R); kwargs...)
 parameters(R::RoutingPointsResult) = R.target_parameters
-seed(R::RoutingPointsResult) = isnothing(monodromy_result(R)) ? nothing : seed(monodromy_result(R))
 
 """
     PartitionResult
@@ -139,12 +138,11 @@ function Base.show(io::IO, R::RoutingPointsResult)
         println(io, "• $ntrace raw trace $(_plural("result", ntrace))")
     end
     if isnothing(monodromy_result(R))
-        println(io, "• monodromy solutions → unknown")
+        print(io, "• monodromy solutions → unknown")
     else
         nmon = nsolutions(monodromy_result(R))
-        println(io, "• $nmon monodromy $(_plural("solution", nmon))")
+        print(io, "• $nmon monodromy $(_plural("solution", nmon))")
     end
-    print(io, "• random_seed → ", sprint(show, seed(R)))
 end
 
 function Base.show(io::IO, R::PartitionResult)
