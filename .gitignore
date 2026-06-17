@@ -12,5 +12,8 @@ figures/
 *.jl.*.mem
 *.jld
 
-# Dont' track Manifest.toml
+# Don't track Manifest.toml
 Manifest.toml
+
+# Don't track the built documentation
+docs/build/

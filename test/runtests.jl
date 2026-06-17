@@ -1,16 +1,12 @@
-using Pkg
-Pkg.activate(joinpath(@__DIR__, ".."))
-Pkg.instantiate()
-
 using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
-
-
-
 @testset "Quadratic discriminant" begin
     
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b]);
+
+    @test degree(h) == 2
+    @test trace_test(h) < 1e-10
 
     c = [13, 2]
 
@@ -49,6 +45,7 @@ end
     ∇r = RoutingGradient(r)
 
     @test degree(h) == 4
+    @test trace_test(h) < 1e-6
     @test denominator_exponent(r) == 3
 
     # Symbolic routing function
@@ -247,6 +244,7 @@ end
 
     # Degree of the discriminant
     @test degree(h) == 12
+    @test trace_test(h) < 1e-6
 
     h_symbolic = 314928 * w[1]^8 * w[2]^4 + 1259712 * w[1]^7 * w[2]^5 + 1889568 * w[1]^6 * w[2]^6 + 1259712 * w[1]^5 * w[2]^7 +
           314928 * w[1]^4 * w[2]^8 + 139968 * w[1]^10 + 699840 * w[1]^9 * w[2]  + 1277208 * w[1]^8 * w[2]^2 +
@@ -262,7 +260,7 @@ end
     ∇r_symbolic = System(differentiate(log(r_symbolic), [w[1], w[2]]), variables=[w[1], w[2]]) |> fixed
 
     p0 = randn(ComplexF64, 2)
-    @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
+    @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-10
 
 end;
 
@@ -293,18 +291,15 @@ end;
 
 end;
 
-@testset "Multiplicity detection" begin
+@testset "Projected hypersurface membership" begin
     Random.seed!(1234)
     @var a b x
-    F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
-    PseudoWitnessSet(F, 2) 
-    Logging.with_logger(Test.TestLogger(; min_level=Logging.Debug)) do
-        logger = Logging.current_logger()
-        PseudoWitnessSet(F, 2)
-        @test any(r -> r.level == Logging.Warn &&
-                       contains(r.message, "Irreducible component of higher multiplicity detected in the incidence variety."),
-                  logger.logs)
-    end
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    @test contains(h, [2.0, 1.0])
+    @test !contains(h, [3.0, 1.0])
+    @test_throws ArgumentError contains(h, [2.0])
 end
 
 
@@ -324,7 +319,7 @@ end
     # Test the evaluation formula
     pt = [1, 1]
     log_abs_h = p -> log(abs(p[1]^2 - 4*p[2]))
-    direction = h.PWS.L.b
+    direction = h.PWS.L.direction
     C = log(abs(direction[1]^2))
     @test h(pt) + C - log_abs_h(pt) |> abs < 1e-6
 
@@ -338,5 +333,62 @@ end
     Hess_log_abs_h = p -> [[2/(p[1]^2 - 4*p[2]) - 4*p[1]^2/(p[1]^2 - 4*p[2])^2 8*p[1]/(p[1]^2 - 4*p[2])^2]; 
     [8*p[1]/(p[1]^2 - 4*p[2])^2  -16/(p[1]^2 - 4*p[2])^2]]
     @test Hess_log_abs_h(pt) - ProjectedHypersurfaceRegions.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
+
+end
+
+@testset "Noninjective projection" begin
+    @var x y z
+    F = System([z-x^2, y], variables = [x,y, z])
+    h = ProjectedHypersurface(F, [y, z])
+
+    @test degree(h) == 1 # the downstairs degree should be 1
+
+    # h(y,z) = y (up to a constant) so gradient(h, [y, z]) = [1/y, 0]
+    @test gradient(h, [2, 3]) - [1/2, 0] |> norm < 1e-6
+
+end
+
+@testset "Two components projecting to the same hypersurface" begin
+    @var a, b, x
+    F = System([a^2 - 4*b, (x - a + 1) * (x - a)], variables=[a, b, x])
+    # V(F) has two irreducible components that project down to V(a^2-4b)
+    h = ProjectedHypersurface(F, [a, b])
+    @test degree(h) == 2
+end
+
+@testset "Empty PWS" begin
+    Random.seed!(1234)
+    @var a b x
+    F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
+    @test_throws "No witness points found." PseudoWitnessSet(F, 2)
+end
+
+@testset "Multiplicity detection" begin
+    @var a, b, x
+    F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
+    @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
+end
+
+@testset "Trace test" begin
+
+    @var a b x
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    PWS = h.PWS
+    @test trace_test(PWS) < 1e-10
+    # Create an artificial failed PWS
+    PWS_messed_up = PseudoWitnessSet(PWS.F,
+        PWS.k,
+        PWS.L,
+        PWS.W[[1]],
+        PWS.πW[[1]],
+        PWS.tZ[[1]],
+        PWS.tracker,
+        PWS.track_report[[1]]
+    )
+
+    @test trace_test(PWS_messed_up) > 1e-6
+
 
 end

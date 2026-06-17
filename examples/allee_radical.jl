@@ -4,13 +4,13 @@
 
 using Random, Plots, LinearAlgebra,  ImplicitPlots, ProjectedHypersurfaceRegions
 
-Random.seed!(1234)
+Random.seed!(123)
 
 # Set up incidence variety of discriminant
 @var a b x[1:3]
 steady_state = [
-    x[1]*(1 - x[1])*(x[1] - b) - 2*a*x[1] + a*x[2] + a*x[3], 
-    x[2]*(1 - x[2])*(x[2] - b) - 2*a*x[2] + a*x[1] + a*x[3], 
+    x[1]*(1 - x[1])*(x[1] - b) - 2*a*x[1] + a*x[2] + a*x[3],
+    x[2]*(1 - x[2])*(x[2] - b) - 2*a*x[2] + a*x[1] + a*x[3],
     x[3]*(1 - x[3])*(x[3] - b) - 2*a*x[3] + a*x[1] + a*x[2]
 ]
 Jac = differentiate.(steady_state, x')
@@ -36,27 +36,15 @@ radical_generators = [p[1]*x[1] + p[1]*x[2] - 2*p[1]*x[3] + p[2]*x[3]^2 - p[2]*x
 F_radical = System(radical_generators, variables = [a; b; x])
 F_sq = System(randn(4, length(F_radical)) * radical_generators, variables = [a; b; x])
 h_sq = ProjectedHypersurface(F_sq, [a, b])
-PWS_sq = h_sq.PWS
+sort(log.(norm.(F.(h_sq.PWS.W)))) |> plot
 
-# Check which witness points solve the original systems 
-sort(log.(norm.(F.(witness_points(h_sq.PWS))))) |> plot
-
-# Pick a tolerance
-tol = 1e-6
-
-# Filter out the relevant solutions and build a new routing function
-filter = findall(pt->norm(F(pt))<tol, witness_points(h_sq.PWS))
-PWS_new = PseudoWitnessSet(
-    PWS_sq.F, 
-    PWS_sq.k, 
-    PWS_sq.L, 
-    PWS_sq.tW[filter], 
-    PWS_sq.tracker,
-    PWS_sq.track_report[filter]
-)
-
+PWS_new = PseudoWitnessSet(F_sq, 2, filter_condition = (pt -> norm(F(pt)) < 1e-4))
 
 h = ProjectedHypersurface(F, [a, b]; PWS=PWS_new)
+degree(h)
+trace_test(h)
+
+
 r = RoutingFunction(h; c=[0.02,0.2], g = [a,b, b-0.5])
 ∇r = RoutingGradient(r)
 
@@ -64,7 +52,7 @@ r = RoutingFunction(h; c=[0.02,0.2], g = [a,b, b-0.5])
 d = degree(h)
 
 # Test evaluation
-r([0.01,0.1]) #approximately -94.77
+r([0.01,0.1])
 
 # System used for certified root counting
 FP_allee = System(steady_state, variables = x, parameters = [a; b])
@@ -105,17 +93,15 @@ savefig("figures/allee_original_zoomed_in.svg")
 # ROUTING FUNCTION FROM RADICAL GENERATORS
 
 # Previously computed routing points
-pts = [
-    [0.0488373189929933, 0.17529504250751],
-    [1.2278101836407234, 0.27333352325137683],
-    [0.03649953760686965, 0.19538098740286294],
-    [0.019221143323682563, 0.3403529277188622],
-    [0.002012479240850282, 0.40953865518224003],
-    [0.03600678060438847, 0.36033495215448375],
-    [0.046225501340473096, 0.47852790907543874]
+pts = [[0.055589798000619875, 0.2045811486869807],
+    [1.0876774474050412, 0.2831860499258381],
+    [0.038933207105874466, 0.22760515612401028],
+    [0.020722376283910805, 0.349756950729071],
+    [0.005192953854662725, 0.39343926101839477],
+    [0.03634241480971159, 0.36169019748921266],
+    [0.046864792052222624, 0.4669511862494122]
 ]
 
-# Check that all points are critical
 ∇r.(pts)
 
 G, idx, failed_info = partition_of_critical_points(r, pts)

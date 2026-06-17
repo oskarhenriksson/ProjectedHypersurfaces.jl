@@ -1,4 +1,4 @@
-export ProjectedHypersurface, evaluate, gradient, hessian, degree
+export ProjectedHypersurface, evaluate, gradient, hessian, degree, trace_test
 
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
@@ -27,10 +27,49 @@ end
 
 degree(h::ProjectedHypersurface) = degree(h.PWS)
 
+
+"""
+    trace_test(h::ProjectedHypersurface)
+
+Performs a trace test to vertify completeness of the underlying pseduo-witness set and therefore correctness of the degree.
+A value close to zero (e.g., in the order to 1e-16) indicates that the pseudo-witness set is likely complete.
+
+See [`trace_test(::PseudoWitnessSet)`](@ref) for details.
+
+"""
+trace_test(h::ProjectedHypersurface) = trace_test(h.PWS)
+
 Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurface of degree $(degree(h)) in ambient dimension $(nvariables(h))")
     
 ModelKit.variables(h::ProjectedHypersurface{TC}) where {TC} = h.projection_vars
 ModelKit.nvariables(h::ProjectedHypersurface{TC}) where {TC} = length(h.projection_vars)
+
+function Base.contains(
+    h::ProjectedHypersurface,
+    p::AbstractVector;
+    atol = sqrt(eps(Float64)),
+    residual_atol = atol,
+)
+    length(p) == nvariables(h) || throw(ArgumentError("Expected $(nvariables(h)) coordinates."))
+
+    PWS, GC = h.PWS, h.GC
+    track!(GC, PWS, p)
+
+    direction_norm = norm(PWS.L.direction)
+    for (track_succeeded, sol) in zip(PWS.track_report, GC.line_hypersurface_intersections)
+        if !track_succeeded || !all(isfinite, sol)
+            continue
+        end
+
+        t = sol[1]
+        w = sol[2:end]
+        if abs(t) * direction_norm <= atol && norm(PWS.F([p; w])) <= residual_atol
+            return true
+        end
+    end
+
+    false
+end
 
 function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     PWS, GC = h.PWS, h.GC
