@@ -5,6 +5,9 @@ using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b]);
 
+    @test degree(h) == 2
+    @test trace_test(h) < 1e-10
+
     c = [13, 2]
 
     r = RoutingFunction(h; c=c);
@@ -42,6 +45,7 @@ end
     ∇r = RoutingGradient(r)
 
     @test degree(h) == 4
+    @test trace_test(h) < 1e-6
     @test denominator_exponent(r) == 3
 
     # Symbolic routing function
@@ -213,6 +217,7 @@ end
 
     # Degree of the discriminant
     @test degree(h) == 12
+    @test trace_test(h) < 1e-6
 
     h_symbolic = 314928 * w[1]^8 * w[2]^4 + 1259712 * w[1]^7 * w[2]^5 + 1889568 * w[1]^6 * w[2]^6 + 1259712 * w[1]^5 * w[2]^7 +
           314928 * w[1]^4 * w[2]^8 + 139968 * w[1]^10 + 699840 * w[1]^9 * w[2]  + 1277208 * w[1]^8 * w[2]^2 +
@@ -268,6 +273,19 @@ end;
     @test !occursin("::success", partition_display)
 
 end;
+
+@testset "Projected hypersurface membership" begin
+    Random.seed!(1234)
+    @var a b x
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    @test contains(h, [2.0, 1.0])
+    @test !contains(h, [3.0, 1.0])
+    @test_throws ArgumentError contains(h, [2.0])
+end
+
+
 @testset "Hypersurface evaluations for quadratic" begin
 
     # Set up the system
@@ -331,4 +349,28 @@ end
     @var a, b, x
     F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
     @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
+end
+
+@testset "Trace test" begin
+
+    @var a b x
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    PWS = h.PWS
+    @test trace_test(PWS) < 1e-10
+    # Create an artificial failed PWS
+    PWS_messed_up = PseudoWitnessSet(PWS.F,
+        PWS.k,
+        PWS.L,
+        PWS.W[[1]],
+        PWS.πW[[1]],
+        PWS.tZ[[1]],
+        PWS.tracker,
+        PWS.track_report[[1]]
+    )
+
+    @test trace_test(PWS_messed_up) > 1e-6
+
+
 end

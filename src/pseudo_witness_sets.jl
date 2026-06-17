@@ -1,4 +1,4 @@
-export PseudoWitnessSet, degree, total_dim, system
+export PseudoWitnessSet, degree, total_dim, system, trace_test
 struct Line{T<:Number}
     point::Vector{T}
     direction::Vector{T}
@@ -122,10 +122,20 @@ function PseudoWitnessSet(
     )
 end
 
+@doc raw"""
+    track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
+
+Given a pseudo-witness set `PWS` and a point `p` in the downstairs space, move the line downstains so that
+it passes through `p` and track the pseudo-witness points.
+
+The resulting points are stored in `u` and the success of each track is recorded in `PWS.track_report`.
+
+"""
 function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
     tracker = PWS.tracker
     target_parameters!(tracker, p)
-    # Update one tracker instance in place for each target parameter.
+    # PWS.tZ contains the coordinates (t,Z) for the points where the line
+    # (PWS.L.direction*t+PWS.L.point; Z) intersects V(F)
     for (l, w) in enumerate(PWS.tZ)
             HC.track!(tracker, w, 1)
             copyto!(u[l], tracker.tracker.state.x)
@@ -152,4 +162,58 @@ function get_s_and_Uvals!(Uvals, S, GC, PWS)
     end
 
     nothing
+end
+
+function track_projected_point(PWS::PseudoWitnessSet,p)
+    tZ = deepcopy(PWS.tZ)
+    track!(tZ,PWS,p)
+    b = PWS.L.direction
+    map(tZ) do tz
+        t=first(tz)
+        b*t+p
+    end
+end
+
+
+"""
+    trace_test(PWS::PseudoWitnessSet)
+
+Performs a trace test for completness of a pseudo-witness set; see [^LRS18] for details.
+
+Returns a trace, which theoretically should be zero if and only if the pseudo-witness set
+is complete (has all the witness points, meaning that we have correctly computed the degree of the variety).
+
+Since we are working with floating point arithmetic, it will likely not be exactly zero.
+A very low trace (e.g. on the order of 1e-16) is a strong heutistic indication that the pseudo-witness set is complete,
+but does not constitute a proof.
+
+[^LRS18] Leykin, Anton, Jose Israel Rodriguez, and Frank Sottile. "Trace test." Arnold Mathematical Journal 4.1 (2018): 113-125.
+
+"""
+function trace_test(PWS::PseudoWitnessSet)
+
+    L = PWS.L
+    p = L.point
+    b = L.direction
+    πW = PWS.πW
+
+    s₀ = sum(πW)
+    v = randn(ComplexF64,PWS.k)
+    #translate our linear space by v
+    p₋₁ = p-v
+    p₁ = p+v
+    πW₋₁ = track_projected_point(PWS,p₋₁)
+    @assert all(PWS.track_report) "Failed paths detected"
+
+    πW₁ = track_projected_point(PWS,p₁)
+    @assert all(PWS.track_report) "Failed paths detected"
+
+    s₋₁ = sum(πW₋₁)
+    s₁ = sum(πW₁)
+
+    M = [s₋₁ s₀ s₁; 1 1 1]
+    singvals = LinearAlgebra.svdvals(M)
+    trace = singvals[3] / singvals[1]
+
+    trace
 end
