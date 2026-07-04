@@ -1,5 +1,5 @@
 
-using Random, Plots, ProjectedHypersurfaceRegions
+using Random, Plots, ProjectedHypersurfaces
 mkpath("./results/two_discriminants");
 
 Random.seed!(1234)

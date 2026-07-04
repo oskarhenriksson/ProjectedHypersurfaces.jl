@@ -1,4 +1,4 @@
-using ProjectedHypersurfaceRegions, LinearAlgebra
+using ProjectedHypersurfaces, LinearAlgebra
 
 @var x[1:3] a[1:2] b[1:2] t
 f = sum(x.^2)-1

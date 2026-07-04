@@ -1,4 +1,4 @@
-using Random, Plots, ProjectedHypersurfaceRegions
+using Random, Plots, ProjectedHypersurfaces
 mkpath("./results/cubic_two_parameters");
 
 Random.seed!(0x8b868320)

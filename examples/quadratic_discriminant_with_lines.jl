@@ -1,4 +1,4 @@
-using Random, Plots, ProjectedHypersurfaceRegions
+using Random, Plots, ProjectedHypersurfaces
 mkpath("./results/quadratic_discriminant_with_lines");
 
 Random.seed!(12345)

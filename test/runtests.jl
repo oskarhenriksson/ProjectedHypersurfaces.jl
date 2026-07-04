@@ -1,4 +1,4 @@
-using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
+using Test, Random, ProjectedHypersurfaces, LinearAlgebra, Logging
 @testset "Quadratic discriminant" begin
     
     @var a b x
@@ -26,8 +26,8 @@ using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
     u1 = evaluate(r_test, [a;b] => p)
     U1 = evaluate(H_test, [a;b] => p)
     u2, u22, U2 = randn(ComplexF64, k), randn(ComplexF64, k), randn(ComplexF64, k, k);
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u2, U2, ∇r, p);
-    ProjectedHypersurfaceRegions.evaluate!(u22, ∇r, p);
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u2, U2, ∇r, p);
+    ProjectedHypersurfaces.evaluate!(u22, ∇r, p);
 
     @test norm(u1 - u2) < 1e-12
     @test norm(u1 - u22) < 1e-12
@@ -59,35 +59,35 @@ end
     U = zeros(ComplexF64, 2, 2)
     u2 = zeros(ComplexF64, 2)
     U2 = zeros(ComplexF64, 2, 2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, ∇r, p0)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
     @test norm(u-u2) < 1e-12
     @test norm(U-U2) < 1e-12
     @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
 
     # Check realness
     p0 = randn(2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, ∇r, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
     @test norm(imag(u)) < 1e-12
     @test norm(imag(U)) < 1e-12
 
     # Test forming the routing point homotopies
     p1 = zeros(2)
     q1 = randn(2)
-    H = ProjectedHypersurfaceRegions.RoutingPointsHomotopy(∇r, p1, q1)
+    H = ProjectedHypersurfaces.RoutingPointsHomotopy(∇r, p1, q1)
     u = randn(ComplexF64, 2)
     U = randn(ComplexF64, 2, 2)
     x0 = randn(ComplexF64, 2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, H, x0, 1.0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, H, x0, 1.0)
     @test norm(∇r_symbolic(x0) - u) < 1e-12
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, H, x0, 0.0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, H, x0, 0.0)
     @test norm(∇r_symbolic(x0)-q1 - u) < 1e-12
 
 
     # Test that the expansion of start solutions works
     ∇r = RoutingGradient(r)
-    MS, H, S0, rhs0, k = ProjectedHypersurfaceRegions._setup_monodromy_solver(∇r)
-    S0, new_pts = ProjectedHypersurfaceRegions._expand_start_solutions(
+    MS, H, S0, rhs0, k = ProjectedHypersurfaces._setup_monodromy_solver(∇r)
+    S0, new_pts = ProjectedHypersurfaces._expand_start_solutions(
         ∇r, H, S0, rhs0, k;
         start_grid_width = 10,
         start_grid_stepsize = 1,
@@ -142,8 +142,8 @@ end;
     U = zeros(ComplexF64, 2, 2)
     u2 = zeros(ComplexF64, 2)
     U2 = zeros(ComplexF64, 2, 2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, ∇r, p0)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
     @test norm(u-u2) < 1e-12
     @test norm(U-U2) < 1e-12
     @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
@@ -292,7 +292,7 @@ end
     pt = [11, 7]
     Hess_log_abs_h = p -> [[2/(p[1]^2 - 4*p[2]) - 4*p[1]^2/(p[1]^2 - 4*p[2])^2 8*p[1]/(p[1]^2 - 4*p[2])^2]; 
     [8*p[1]/(p[1]^2 - 4*p[2])^2  -16/(p[1]^2 - 4*p[2])^2]]
-    @test Hess_log_abs_h(pt) - ProjectedHypersurfaceRegions.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
+    @test Hess_log_abs_h(pt) - ProjectedHypersurfaces.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
 
 end
 @testset "Noninjective projection" begin

@@ -1,5 +1,5 @@
 
-# ProjectedHypersurfaceRegions.jl
+# ProjectedHypersurfaces.jl
 
 This repository implements "numerical elimination" techniques for representing, and computing the complement of, real hypersurfaces that arise through projection of a known variety.
 
@@ -11,7 +11,7 @@ You can install the package directly from the github repository as follows:
 
 ```julia-repl
 julia> using Pkg
-julia> Pkg.add(url="https://github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl")
+julia> Pkg.add(url="https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl")
 ```
 
 ## Examples of usage
@@ -21,7 +21,7 @@ First of all, make sure that you have activated a Julia environment where the pa
 You can then load the package in a Julia session by running the following command:
 
 ```julia-repl
-julia> using ProjectedHypersurfaceRegions
+julia> using ProjectedHypersurfaces
 ```
 
 Suppose that we want to study the complement of the discriminant for the quadratic polynomial 
@@ -117,6 +117,6 @@ PseudoWitnessSet
 ```
 
 ```@autodocs
-Modules = [ProjectedHypersurfaceRegions]
+Modules = [ProjectedHypersurfaces]
 Order = [:type, :function]
 ```

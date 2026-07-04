@@ -1,13 +1,13 @@
 using Documenter
-using ProjectedHypersurfaceRegions
+using ProjectedHypersurfaces
 
 makedocs(
-    sitename = "ProjectedHypersurfaceRegions Documentation",
-    modules = [ProjectedHypersurfaceRegions],
+    sitename = "ProjectedHypersurfaces Documentation",
+    modules = [ProjectedHypersurfaces],
     format = Documenter.HTML(edit_link = "main"),
     checkdocs = :exports,
 )
 
 deploydocs(
-    repo = "github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl.git",
+    repo = "github.com/oskarhenriksson/ProjectedHypersurfaces.jl.git",
 )
