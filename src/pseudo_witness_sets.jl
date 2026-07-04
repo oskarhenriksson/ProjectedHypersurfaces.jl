@@ -106,7 +106,7 @@ function PseudoWitnessSet(
     end
 
     # Set up tracker 
-    tracker = Tracker(ParameterHomotopy(F_L, L.point, L.point))
+    tracker = Tracker(ParameterHomotopy(F_L, L.point, L.point); options=TrackerOptions(; parameters=:fast, extended_precision=false, max_steps=100))
     track_report = zeros(Bool, length(tZ)) # for keeping track of which paths are successful
 
     # Return the pseudo-witness set
@@ -117,7 +117,7 @@ function PseudoWitnessSet(
         W,
         πW,
         tZ,
-        EndgameTracker(tracker),
+        EndgameTracker(tracker; options=EndgameOptions(; endgame_start=0.0, refine_steps=0)),
         track_report,
     )
 end
