@@ -13,7 +13,8 @@ sample_points
 A hypersurface $\mathcal{H}$ in $\mathbb{C}^k$ that arises through projection of $(k-1)$-dimensional variety in a higher-dimensional ambient space.
 
 The hypersurface $\mathcal{H}$ is represented by a [`PseudoWitnessSet`](@ref).
-"""struct ProjectedHypersurface{TC} <: HC.AbstractSystem
+"""
+struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
     projection_vars::Vector{HC.Variable}
     GC::TC
