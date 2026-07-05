@@ -175,7 +175,7 @@ function track_projected_point(PWS::PseudoWitnessSet,p)
 end
 
 
-"""
+@doc raw"""
     trace_test(PWS::PseudoWitnessSet)
 
 Performs a trace test for completness of a pseudo-witness set; see [^LRS18] for details.
@@ -220,7 +220,7 @@ end
 
 
 
-"""
+@doc raw"""
     sample_points(PWS::PseudoWitnessSet, N::Int)
 
 Generate a sample of `N` points from a hypersurface represented by the pseudo-witness set `PWS`.

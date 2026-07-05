@@ -69,7 +69,7 @@ function partition_indices(lst)
 end
 
 
-"""
+@doc raw"""
     partition_of_critical_points(
     r::RoutingFunction,
     crit_pts::AbstractVector{<:AbstractVector{<:Real}},
@@ -235,7 +235,7 @@ partition_of_critical_points(
 ) = partition_of_critical_points(r, routing_points(result), args...; kwargs...)
 
 
-"""
+@doc raw"""
     PartitionResult
 
 Result returned by [`partition_of_critical_points`](@ref). Use
@@ -256,7 +256,7 @@ Return the connected components as vectors of routing point indices.
 """
 partitions(R::PartitionResult) = R.partitions
 
-"""
+@doc raw"""
     morse_indices(result::PartitionResult)
 
 Return the Morse index computed for each routing point, or `nothing` if the
@@ -264,21 +264,21 @@ partition failed before indices were available.
 """
 morse_indices(R::PartitionResult) = R.morse_indices
 
-"""
+@doc raw"""
     failed_info(result::PartitionResult)
 
 Return information collected from failed connection attempts.
 """
 failed_info(R::PartitionResult) = R.failed_info
 
-"""
+@doc raw"""
     return_code(result::PartitionResult)
 
 Return a symbolic status code for a partition result.
 """
 return_code(R::PartitionResult) = R.return_code
 
-"""
+@doc raw"""
     ncomponents(result::PartitionResult)
 
 Return the number of connected components in the partition result.
