@@ -16,9 +16,8 @@ import HomotopyContinuation:
     RoutingPointsResult
 
 Result returned by [`critical_points`](@ref). Use [`routing_points`](@ref) for the
-real routing points, [`result`](@ref) for the final trace result,
-[`monodromy_result`](@ref) for the underlying monodromy computation, and
-[`solutions(result)`](../homotopy_continuation.md#solutions) for the routing points as solutions to `∇r = 0`; use `monodromy_result(result)` for the monodromy start pair.
+real routing points, [`result`](@ref) for the final result from tracking to to `∇r = 0`,
+[`monodromy_result`](@ref) for the underlying monodromy computation.
 """
 struct RoutingPointsResult{P,T,M}
     routing_points::P
