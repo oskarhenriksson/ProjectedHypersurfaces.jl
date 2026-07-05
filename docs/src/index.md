@@ -9,7 +9,7 @@ It is based on the paper [Elimination Without Eliminating: Computing Complements
 
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
-Pages = ["projected_hypersurfaces.jl"]
+Pages = ["hypersurfaces.jl"]
 Order = [:type, :function]
 ```
 
