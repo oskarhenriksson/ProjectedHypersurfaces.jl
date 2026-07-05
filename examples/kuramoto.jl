@@ -1,7 +1,7 @@
 # Algebraic formulation of the Kuramoto model with three oscillators
 # See, e.g., https://doi.org/10.1063/1.4919696
 
-using Random, Plots, LinearAlgebra, ImplicitPlots, ProjectedHypersurfaceRegions
+using Random, Plots, LinearAlgebra, ImplicitPlots, ProjectedHypersurfaces
 mkpath("./results/kuramoto");
 
 Random.seed!(12345)

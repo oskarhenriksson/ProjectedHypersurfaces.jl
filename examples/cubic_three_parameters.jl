@@ -1,4 +1,4 @@
-using Random, Plots, ProjectedHypersurfaceRegions
+using Random, Plots, ProjectedHypersurfaces
 
 Random.seed!(0x8b868320)
 

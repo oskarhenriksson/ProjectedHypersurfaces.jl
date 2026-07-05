@@ -1,5 +1,5 @@
 
-using Random, ProjectedHypersurfaceRegions
+using Random, ProjectedHypersurfaces
 mkpath("./results/two_parabolas");
 
 Random.seed!(1234)

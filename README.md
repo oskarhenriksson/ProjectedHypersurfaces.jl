@@ -1,7 +1,7 @@
 
-# ProjectedHypersurfaceRegions.jl
-[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhenriksson.github.io/ProjectedHypersurfaceRegions.jl/dev/)
-[![CI](https://github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl/actions/workflows/ci.yml)
+# ProjectedHypersurfaces.jl
+[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhenriksson.github.io/ProjectedHypersurfaces.jl/dev/)
+[![CI](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/actions/workflows/ci.yml)
 
 This repository implements "numerical elimination" techniques for representing, and computing the complement of, real hypersurfaces that arise through projection of a known variety.
 
@@ -13,7 +13,7 @@ You can install the package directly from the github repository as follows:
 
 ```julia-repl
 julia> using Pkg
-julia> Pkg.add(url="https://github.com/oskarhenriksson/ProjectedHypersurfaceRegions.jl")
+julia> Pkg.add(url="https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl")
 ```
 
 ## Examples of usage
@@ -23,7 +23,7 @@ First of all, make sure that you have activated a Julia environment where the pa
 You can then load the package in a Julia session by running the following command:
 
 ```julia-repl
-julia> using ProjectedHypersurfaceRegions
+julia> using ProjectedHypersurfaces
 ```
 
 Suppose that we want to study the complement of the discriminant for the quadratic polynomial 

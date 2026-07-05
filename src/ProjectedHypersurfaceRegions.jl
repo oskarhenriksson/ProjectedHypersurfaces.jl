@@ -1,4 +1,4 @@
-module ProjectedHypersurfaceRegions
+module ProjectedHypersurfaces
 using HomotopyContinuation, LinearAlgebra, OrdinaryDiffEq, SciMLBase, LightGraphs, ProgressMeter
 
 const HC = HomotopyContinuation
