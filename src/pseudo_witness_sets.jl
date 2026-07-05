@@ -11,7 +11,6 @@ function Line(point::Vector{T}, direction::Vector{T}) where T<:Number
     L = LinearSubspace(A, b)
     Line(point, direction, L)
 end
-
 struct PseudoWitnessSet{TF<:System,T<:Number,TT}
     F::TF
     k::Int
