@@ -1,6 +1,7 @@
 export RoutingPointsResult,
     PartitionResult,
     routing_points,
+    complex_critical_points,
     result,
     monodromy_result,
     return_code,
@@ -38,6 +39,13 @@ routing_points(R::RoutingPointsResult) = R.routing_points
 Return the final HomotopyContinuation result obtained by tracing to ∇r = 0.
 """
 result(R::RoutingPointsResult) = R.result
+
+"""
+    complex_critical_points(result::RoutingPointsResult)
+
+Return the complex critical points of the routing function (the real points are routing points).
+"""
+complex_critical_points(R::RoutingPointsResult) = solutions(R.result)
 
 """
     monodromy_result(result::RoutingPointsResult)
@@ -102,7 +110,7 @@ end
 
 function Base.show(io::IO, R::RoutingPointsResult)
     npts = length(routing_points(R))
-    println(io, "RoutingPointsResult with $npts $(_plural("routing point", npts))")
+    println(io, "RoutingPointsResult with $npts $(_plural("routing point", npts)) and $(nresults(R.result)) $(_plural("complex critical points", nresults(R.result)))")
 end
 
 function Base.show(io::IO, R::PartitionResult)
