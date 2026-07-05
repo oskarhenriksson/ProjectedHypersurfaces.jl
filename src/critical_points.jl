@@ -1,6 +1,13 @@
 
 export critical_points
 
+export RoutingPointsResult,
+    PartitionResult,
+    routing_points,
+    complex_critical_points,
+    result,
+    monodromy_result
+
 import HomotopyContinuation: MonodromyOptions, UniquePoints, EndgameTracker
 
 """
@@ -266,4 +273,56 @@ function _solve_and_trace(
         routing_points = real_solutions(results(mon_result))
         return RoutingPointsResult(routing_points, mon_result, mon_result)
     end
+end
+
+
+
+import HomotopyContinuation:
+    solutions, real_solutions, nsolutions, results, nresults
+
+"""
+    RoutingPointsResult
+
+Result returned by [`critical_points`](@ref). Use [`routing_points`](@ref) for the
+real routing points, [`result`](@ref) for the final result from tracking to to `∇r = 0`,
+[`monodromy_result`](@ref) for the underlying monodromy computation.
+"""
+struct RoutingPointsResult{P,T,M}
+    routing_points::P
+    result::T
+    monodromy_result::M
+end
+
+"""
+    routing_points(result::RoutingPointsResult)
+
+Return the real critical points used for routing.
+"""
+routing_points(R::RoutingPointsResult) = R.routing_points
+
+"""
+    result(result::RoutingPointsResult)
+
+Return the final HomotopyContinuation result obtained by tracing to ∇r = 0.
+"""
+result(R::RoutingPointsResult) = R.result
+
+"""
+    complex_critical_points(result::RoutingPointsResult)
+
+Return the complex critical points of the routing function (the real points are routing points).
+"""
+complex_critical_points(R::RoutingPointsResult) = solutions(R.result)
+
+"""
+    monodromy_result(result::RoutingPointsResult)
+
+Return the underlying monodromy computation result.
+"""
+monodromy_result(R::RoutingPointsResult) = R.monodromy_result
+
+
+function Base.show(io::IO, R::RoutingPointsResult)
+    npts = length(routing_points(R))
+    println(io, "RoutingPointsResult with $npts routing point(s) and $(length(complex_critical_points(R))) complex critical point(s)")
 end
