@@ -62,6 +62,18 @@ function partition_indices(lst)
 end
 
 
+"""
+    partition_of_critical_points(
+    r::RoutingFunction,
+    crit_pts::AbstractVector{<:AbstractVector{<:Real}},
+    epsilon::Float64 = 1e-6,
+    reltol::Float64 = 1e-6,
+    abstol::Float64 = 1e-9,
+)
+
+Partition a collection `crit_pts` of critical points of a routing function `r` into connected components via gradient flow.
+The function returns a [`PartitionResult`](@ref) containing the connected components, Morse indices, and any failed connection attempts.  
+"""
 function partition_of_critical_points(
     r::RoutingFunction,
     crit_pts::AbstractVector{<:AbstractVector{<:Real}},
