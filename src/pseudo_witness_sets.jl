@@ -1,4 +1,4 @@
-export PseudoWitnessSet, degree, total_dim, system, trace_test
+export PseudoWitnessSet, degree, total_dim, system, trace_test, sample_points
 struct Line{T<:Number}
     point::Vector{T}
     direction::Vector{T}
@@ -216,4 +216,34 @@ function trace_test(PWS::PseudoWitnessSet)
     trace = singvals[3] / singvals[1]
 
     trace
+end
+
+
+
+"""
+    sample_points(PWS::PseudoWitnessSet, N::Int)
+
+Generate a sample of `N` points from a hypersurface represented by the pseudo-witness set `PWS`.
+"""
+function sample_points(PWS::PseudoWitnessSet, N::Int)
+
+    # Decide how many linear spaces we need
+    d = degree(PWS)
+    number_of_linear_spaces = div(N, d, RoundUp)
+
+    # Move the pseudo witness set line to generate new sample points
+    πW₀ = PWS.πW
+    p₀ = PWS.L.point
+    sample = copy(πW₀)
+    for _ = 1:number_of_linear_spaces-1
+        v = randn(ComplexF64,PWS.k)
+        p = p₀ + v
+        πW_new = ProjectedHypersurfaces.track_projected_point(PWS, p)
+        πW_new_succeeded = πW_new[PWS.track_report]
+        append!(sample, πW_new_succeeded)
+    end
+
+    # Return the desired number of sample points
+    sample[1:N]
+
 end

@@ -57,6 +57,11 @@ end
     r_symbolic = h_symbolic/((a - c[1])^2 + (b - c[2])^2 + 1)^3
     ∇r_symbolic = System(differentiate(log(r_symbolic), [a, b]), variables=[a, b]) |> fixed
 
+    # Test sample
+    sample = sample_points(h, 6)
+    @test all(contains.(Ref(h), sample))
+    @test all([abs(evaluate(h_symbolic, [a,b]=>pt)) < 1e-10 for pt in sample])
+
     # Test evaluation and Jacobian
     p0 = randn(ComplexF64, 2)
     u = zeros(ComplexF64, 2)
@@ -264,7 +269,7 @@ end;
 
 end;
 
-@testset "Projected hypersurface membership" begin
+@testset "Projected hypersurface sampling and membership" begin
     Random.seed!(12345)
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -273,9 +278,10 @@ end;
     @test contains(h, [2.0, 1.0])
     @test !contains(h, [3.0, 1.0])
     @test_throws ArgumentError contains(h, [2.0])
+
+    sample = sample_points(h, 6)
+    @test all(contains.(Ref(h), sample))
 end
-
-
 @testset "Hypersurface evaluations for quadratic" begin
 
     Random.seed!(12345)
