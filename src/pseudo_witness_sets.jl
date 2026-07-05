@@ -11,16 +11,6 @@ function Line(point::Vector{T}, direction::Vector{T}) where T<:Number
     L = LinearSubspace(A, b)
     Line(point, direction, L)
 end
-
-@doc raw"""
-    PseudoWitnessSet{TF<:System,T<:Number,TT}
-
-A numerical representation of a hypersurface $\mathcal{H}$ in $\mathbb{C}^k$ that arises through projection of a $(k-1)$-dimensional variety $X$ in a higher-dimensional ambient space.
-
-The hypersurface $\mathcal{H}$ is represented through its intersection points with a general line $L$ in $\mathbb{C}^k$, which can be homotoped to other general lines.
-
-The intersection points are obtained by tracking the intersection points of the variety $X$ with the preimage of the line $L$ under the projection $\pi$.
-"""
 struct PseudoWitnessSet{TF<:System,T<:Number,TT}
     F::TF
     k::Int
