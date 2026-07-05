@@ -1,5 +1,7 @@
 using Test, Random, ProjectedHypersurfaces, LinearAlgebra, Logging
 @testset "Quadratic discriminant" begin
+
+    Random.seed!(12345)
     
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -35,6 +37,8 @@ using Test, Random, ProjectedHypersurfaces, LinearAlgebra, Logging
 end
 
 @testset "Cubic discriminant" begin
+
+    Random.seed!(12345)
     
     @var a b x
     F = System([x^3 + a * x^2 + b * x + 1; 3 * x^2 + 2 * a * x + b], variables=[a, b, x])
@@ -131,6 +135,8 @@ end
 end;
 
 @testset "Quadratic discriminant with lines" begin
+
+    Random.seed!(12345)
     
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -170,6 +176,8 @@ end;
 
 
 @testset "Two discriminants" begin
+
+    Random.seed!(12345)
     
     @var a b x z
     F1 = System([x^3 + a * x^2 + b * x + 1; 3 * x^2 + 2 * a * x + b], variables=[a, b, x])
@@ -198,6 +206,8 @@ end;
 end
 
 @testset "Kuramoto discriminant" begin
+
+    Random.seed!(12345)
     
     @var s[1:2] c[1:2] w[1:2]
     freq1 = (s[1] * c[2] - c[1] * s[2]) + (s[1] * 1 - c[1] * 0) - 3 * w[1]
@@ -239,6 +249,8 @@ end;
 
 @testset "Connect points" begin
     
+    Random.seed!(12345)
+
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b]);
@@ -275,7 +287,7 @@ end;
 end;
 
 @testset "Projected hypersurface membership" begin
-    Random.seed!(1234)
+    Random.seed!(12345)
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b])
@@ -287,6 +299,8 @@ end
 
 
 @testset "Hypersurface evaluations for quadratic" begin
+
+    Random.seed!(12345)
 
     # Set up the system
     @var a b x
@@ -319,6 +333,9 @@ end
 
 end
 @testset "Noninjective projection" begin
+
+    Random.seed!(12345)
+
     @var x y z
     F = System([z-x^2, y], variables = [x,y, z])
     h = ProjectedHypersurface(F, [y, z])
@@ -331,6 +348,9 @@ end
 end
 
 @testset "Two components projecting to the same hypersurface" begin
+
+    Random.seed!(12345)
+
     @var a, b, x
     F = System([a^2 - 4*b, (x - a + 1) * (x - a)], variables=[a, b, x])
     # V(F) has two irreducible components that project down to V(a^2-4b)
@@ -339,19 +359,23 @@ end
 end
 
 @testset "Empty PWS" begin
-    Random.seed!(1234)
+    
+    Random.seed!(12345)
     @var a b x
     F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
     @test_throws "No witness points found." PseudoWitnessSet(F, 2)
 end
 
 @testset "Multiplicity detection" begin
+    Random.seed!(12345)
     @var a, b, x
     F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
     @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
 end
 
 @testset "Trace test" begin
+
+    Random.seed!(12345)
 
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])

@@ -109,5 +109,5 @@ The following pictures are created via the files `quadratic.jl` and `cubic_two_p
 ## Dependencies
 The code relies on the following Julia packages:
 - `HomotopyContinuation.jl` (for numerical algebraic geometry)
-- `DifferentialEquations.jl` (for gradient flow)
+- `OrdinaryDiffEq.jl` (for gradient flow)
 - `LightGraphs.jl` (for building the connectivity graph).
