@@ -23,7 +23,7 @@ r = RoutingFunction([h1, h2]; c=c)
 # pts = read_solutions("./results/two_discriminants/routing_points.txt") |> real
 routing_result = critical_points(r)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 write_parameters("./results/two_discriminants/monodromy_parameters.txt", parameters(mon_res))

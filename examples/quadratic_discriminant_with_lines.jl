@@ -19,7 +19,7 @@ e = denominator_exponent(r)
 # Find the complex critical points 
 routing_result = critical_points(r)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 write_parameters("./results/quadratic_discriminant_with_lines/monodromy_parameters.txt", parameters(mon_res))

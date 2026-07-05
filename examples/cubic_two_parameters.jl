@@ -27,7 +27,7 @@ r = RoutingFunction(h; c=c)
 # pts = read_solutions("./results/cubic_two_parameters/routing_points.txt") |> real
 routing_result = critical_points(r)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 write_parameters("./results/cubic_two_parameters/monodromy_parameters.txt", parameters(mon_res))

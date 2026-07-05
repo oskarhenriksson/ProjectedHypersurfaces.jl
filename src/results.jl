@@ -1,7 +1,7 @@
 export RoutingPointsResult,
     PartitionResult,
     routing_points,
-    trace_result,
+    result,
     monodromy_result,
     return_code,
     partitions,
@@ -16,29 +16,14 @@ import HomotopyContinuation:
     RoutingPointsResult
 
 Result returned by [`critical_points`](@ref). Use [`routing_points`](@ref) for the
-real routing points, [`trace_result`](@ref) for the final trace result, and
-[`monodromy_result`](@ref) for the underlying monodromy computation.
-The pair `solutions(result), parameters(result)` represents the routing points as
-solutions to `∇r = 0`; use `monodromy_result(result)` for the monodromy start pair.
+real routing points, [`result`](@ref) for the final trace result,
+[`monodromy_result`](@ref) for the underlying monodromy computation, and
+[`solutions(result)`](../homotopy_continuation.md#solutions) for the routing points as solutions to `∇r = 0`; use `monodromy_result(result)` for the monodromy start pair.
 """
-struct RoutingPointsResult{P,T,M,Q}
+struct RoutingPointsResult{P,T,M}
     routing_points::P
-    trace_result::T
+    result::T
     monodromy_result::M
-    target_parameters::Q
-end
-function RoutingPointsResult(routing_points, trace_result, monodromy_result)
-    if isempty(routing_points)
-        nparameters = isnothing(monodromy_result) ? 0 : length(parameters(monodromy_result))
-    else
-        nparameters = length(first(routing_points))
-    end
-    RoutingPointsResult(
-        routing_points,
-        trace_result,
-        monodromy_result,
-        zeros(ComplexF64, nparameters),
-    )
 end
 
 """
@@ -49,11 +34,11 @@ Return the real critical points used for routing.
 routing_points(R::RoutingPointsResult) = R.routing_points
 
 """
-    trace_result(result::RoutingPointsResult)
+    result(result::RoutingPointsResult)
 
 Return the final HomotopyContinuation result obtained by tracing to ∇r = 0.
 """
-trace_result(R::RoutingPointsResult) = R.trace_result
+result(R::RoutingPointsResult) = R.result
 
 """
     monodromy_result(result::RoutingPointsResult)
@@ -61,13 +46,6 @@ trace_result(R::RoutingPointsResult) = R.trace_result
 Return the underlying monodromy computation result.
 """
 monodromy_result(R::RoutingPointsResult) = R.monodromy_result
-
-solutions(R::RoutingPointsResult) = routing_points(R)
-real_solutions(R::RoutingPointsResult; kwargs...) = routing_points(R)
-nsolutions(R::RoutingPointsResult) = length(routing_points(R))
-results(R::RoutingPointsResult; kwargs...) = results(trace_result(R); kwargs...)
-nresults(R::RoutingPointsResult; kwargs...) = nresults(trace_result(R); kwargs...)
-parameters(R::RoutingPointsResult) = R.target_parameters
 
 """
     PartitionResult
@@ -124,22 +102,8 @@ function _plural(noun::AbstractString, n::Integer)
 end
 
 function Base.show(io::IO, R::RoutingPointsResult)
-    npts = nsolutions(R)
-    header = "RoutingPointsResult with $npts $(_plural("routing point", npts))"
-    println(io, header)
-    println(io, "="^length(header))
-    if isnothing(trace_result(R))
-        println(io, "• raw trace results → unknown")
-    else
-        ntrace = nresults(R)
-        println(io, "• $ntrace raw trace $(_plural("result", ntrace))")
-    end
-    if isnothing(monodromy_result(R))
-        print(io, "• monodromy solutions → unknown")
-    else
-        nmon = nsolutions(monodromy_result(R))
-        print(io, "• $nmon monodromy $(_plural("solution", nmon))")
-    end
+    npts = length(routing_points(R))
+    println(io, "RoutingPointsResult with $npts $(_plural("routing point", npts))")
 end
 
 function Base.show(io::IO, R::PartitionResult)

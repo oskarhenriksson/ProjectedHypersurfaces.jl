@@ -45,7 +45,7 @@ r = RoutingFunction(h; c=center);
 # pts = read_solutions("./results/3RPRv2/routing_points.txt") |> real
 routing_result = critical_points(r)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 # Connected components 
@@ -87,7 +87,7 @@ options = MonodromyOptions(
 )
 routing_result = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 partition_result = partition_of_critical_points(r, routing_result)

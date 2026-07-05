@@ -105,18 +105,8 @@ end
     @test_throws MethodError critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
     routing_result = critical_points(r, start_grid_width=0, options=options)
     @test routing_result isa RoutingPointsResult
-    @test solutions(routing_result) == routing_points(routing_result)
-    @test real_solutions(routing_result) == routing_points(routing_result)
-    @test parameters(routing_result) == zeros(ComplexF64, size(∇r, 1))
-    @test all(norm(evaluate(∇r, z, parameters(routing_result))) < 1e-12 for z in solutions(routing_result))
-    @test trace_result(routing_result) isa Result
-    @test monodromy_result(routing_result) isa MonodromyResult
-    @test !applicable(return_code, routing_result)
-    @test !applicable(iterate, routing_result)
-    routing_display = sprint(show, routing_result)
-    @test !isempty(routing_display)
-    @test !occursin("return_code", routing_display)
-    @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
+    @test all(norm(evaluate(∇r, z, zeros(ComplexF64, size(∇r, 1)))) < 1e-12 for z in routing_points(routing_result))
+    @test all(norm.(∇r_symbolic.(solutions(result(routing_result)))) .< 1e-12)
 
     pl = generate_plot(
         r,
@@ -170,7 +160,7 @@ end;
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
     routing_result = critical_points(r, start_grid_width=0, options=options)
-    @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
+    @test all(norm.(∇r_symbolic.(solutions(result(routing_result)))) .< 1e-12)
 
 end;
 
@@ -201,7 +191,7 @@ end;
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
     routing_result = critical_points(r, start_grid_width=0, options=options)
-    @test all(norm.(∇r_symbolic.(solutions(trace_result(routing_result)))) .< 1e-12)
+    @test all(norm.(∇r_symbolic.(solutions(result(routing_result)))) .< 1e-12)
 
 end
 

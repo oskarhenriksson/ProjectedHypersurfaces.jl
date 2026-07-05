@@ -26,7 +26,7 @@ r = RoutingFunction(h; c=c)
 # Critical points
 routing_result = critical_points(r)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 # Connecting critical points

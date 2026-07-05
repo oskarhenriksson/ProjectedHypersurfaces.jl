@@ -245,7 +245,6 @@ function _solve_and_trace(
 )
     ### Monodromy
     mon_result = monodromy_solve(MS, S0, rhs0, rand(UInt32))
-    target_parameters = zeros(ComplexF64, length(rhs0))
 
     ### Trace to ∇r=0
     if !monodromy_at_zero
@@ -254,7 +253,7 @@ function _solve_and_trace(
         target_parameters!(H, intermediate_rhs)
         result_intermediate = HomotopyContinuation.solve(H, solutions(mon_result))
         start_parameters!(H, intermediate_rhs)
-        target_parameters!(H, target_parameters)
+        target_parameters!(H, zeros(ComplexF64, length(rhs0)))
         result = HomotopyContinuation.solve(H, result_intermediate)
         routing_points = real_solutions(result)
 
@@ -262,9 +261,9 @@ function _solve_and_trace(
         if start_grid_width > 0
             routing_points = HC.unique_points([routing_points; real.(new_pts)])
         end
-        return RoutingPointsResult(routing_points, result, mon_result, target_parameters)
+        return RoutingPointsResult(routing_points, result, mon_result)
     else
         routing_points = real_solutions(results(mon_result))
-        return RoutingPointsResult(routing_points, mon_result, mon_result, target_parameters)
+        return RoutingPointsResult(routing_points, mon_result, mon_result)
     end
 end

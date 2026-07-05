@@ -23,7 +23,7 @@ r = RoutingFunction(h)
 # Find the complex critical points
 routing_result = critical_points(r; start_grid_width=0)
 pts = routing_points(routing_result)
-res = trace_result(routing_result)
+res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 # Connect the critical points
