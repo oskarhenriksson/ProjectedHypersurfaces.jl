@@ -1,7 +1,7 @@
 export partition_of_critical_points
 
 export return_code,
-    partitions,
+    regions,
     morse_indices,
     failed_info,
     nregions
