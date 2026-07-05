@@ -4,7 +4,7 @@ export return_code,
     partitions,
     morse_indices,
     failed_info,
-    ncomponents
+    nregions
 
 ### This is adapted from https://github.com/JuliaAlgebra/HypersurfaceRegions.jl/blob/main/src/partition.jl
 
@@ -250,11 +250,11 @@ struct PartitionResult{P,I,F}
 end
 
 """
-    partitions(result::PartitionResult)
+    regions(result::PartitionResult)
 
 Return the connected components as vectors of routing point indices.
 """
-partitions(R::PartitionResult) = R.partitions
+regions(R::PartitionResult) = R.partitions
 
 @doc raw"""
     morse_indices(result::PartitionResult)
@@ -279,14 +279,14 @@ Return a symbolic status code for a partition result.
 return_code(R::PartitionResult) = R.return_code
 
 @doc raw"""
-    ncomponents(result::PartitionResult)
+    nregions(result::PartitionResult)
 
 Return the number of connected components in the partition result.
 """
-ncomponents(R::PartitionResult) = length(partitions(R))
+nregions(R::PartitionResult) = length(regions(R))
 
 function Base.show(io::IO, R::PartitionResult)
-    npars = ncomponents(R)
+    npars = nregions(R)
     nfailures = length(failed_info(R))
     header = "PartitionResult with $npars connected components"
     println(io, header)

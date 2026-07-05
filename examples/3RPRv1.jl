@@ -50,7 +50,7 @@ mon_res = monodromy_result(routing_result)
 
 # Connected components 
 partition_result = partition_of_critical_points(r, routing_result)
-G = partitions(partition_result)
+G = regions(partition_result)
 idx = morse_indices(partition_result)
 failures = failed_info(partition_result)
 
@@ -91,7 +91,7 @@ res = result(routing_result)
 mon_res = monodromy_result(routing_result)
 
 partition_result = partition_of_critical_points(r, routing_result)
-G = partitions(partition_result)
+G = regions(partition_result)
 idx = morse_indices(partition_result)
 failures = failed_info(partition_result)
 

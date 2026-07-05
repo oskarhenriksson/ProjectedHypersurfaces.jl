@@ -301,7 +301,7 @@ function generate_plot(
     generate_plot(
         r,
         routing_points(routing_result),
-        partitions(partition_result),
+        regions(partition_result),
         morse_indices(partition_result);
         kwargs...,
     )

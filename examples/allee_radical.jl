@@ -76,7 +76,7 @@ pts_original = [[1.2648270055555684, 0.23668758954766242],
 ]
 
 partition_result_original = partition_of_critical_points(r_original, pts_original)
-G_original = partitions(partition_result_original)
+G_original = regions(partition_result_original)
 idx_original = morse_indices(partition_result_original)
 failures_original = failed_info(partition_result_original)
 
@@ -108,7 +108,7 @@ pts = [[0.055589798000619875, 0.2045811486869807],
 ∇r.(pts)
 
 partition_result = partition_of_critical_points(r, pts)
-G = partitions(partition_result)
+G = regions(partition_result)
 idx = morse_indices(partition_result)
 failures = failed_info(partition_result)
 

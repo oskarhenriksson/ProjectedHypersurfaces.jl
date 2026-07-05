@@ -35,7 +35,7 @@ write_solutions("./results/quadratic/routing_points.txt", pts)
 
 # Connect the critical points
 partition_result = partition_of_critical_points(r, routing_result)
-G = partitions(partition_result)
+G = regions(partition_result)
 idx = morse_indices(partition_result)
 failures = failed_info(partition_result)
 println("Connected components: $(G)")
