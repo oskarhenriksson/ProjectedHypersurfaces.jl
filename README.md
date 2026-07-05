@@ -151,7 +151,7 @@ Finally, we connect the critical points that belong to the same component of the
 julia> partition_result = partition_of_critical_points(r, routing_result);
 ```
 
-The partitions describe the connected components. We see that the first, third and fourth critical points belong to the same connected component, and that the second one belongs to its own component:
+The regions describe the connected components. We see that the first, third and fourth critical points belong to the same connected component, and that the second one belongs to its own component:
 
 ```julia-repl
 julia> regions(partition_result)

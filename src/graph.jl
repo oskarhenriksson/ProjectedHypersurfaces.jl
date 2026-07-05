@@ -57,15 +57,15 @@ end
 
 # input a list, output a list of indices that have the same value in the list
 function partition_indices(lst)
-    partitions = Dict()
+    regions = Dict()
     for (index, element) in enumerate(lst)
-        if haskey(partitions, element)
-            push!(partitions[element], index)
+        if haskey(regions, element)
+            push!(regions[element], index)
         else
-            partitions[element] = [index]
+            regions[element] = [index]
         end
     end
-    return partitions
+    return regions
 end
 
 
@@ -239,11 +239,11 @@ partition_of_critical_points(
     PartitionResult
 
 Result returned by [`partition_of_critical_points`](@ref). Use
-[`partitions`](@ref) for connected components, [`morse_indices`](@ref) for the
+[`regions`](@ref) for connected components, [`morse_indices`](@ref) for the
 critical point indices, and [`failed_info`](@ref) for failed connection attempts.
 """
 struct PartitionResult{P,I,F}
-    partitions::P
+    regions::P
     morse_indices::I # TODO: this is a strange output to expose to users, since it is indexing yet another list you must reference. Considering changing this to a Dict or something.
     failed_info::F
     return_code::Symbol
@@ -254,7 +254,7 @@ end
 
 Return the connected components as vectors of routing point indices.
 """
-regions(R::PartitionResult) = R.partitions
+regions(R::PartitionResult) = R.regions
 
 @doc raw"""
     morse_indices(result::PartitionResult)
