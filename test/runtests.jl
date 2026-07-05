@@ -62,6 +62,10 @@ end
     @test all(contains.(Ref(h), sample))
     @test all([abs(evaluate(h_symbolic, [a,b]=>pt)) < 1e-10 for pt in sample])
 
+    # Test interpolation
+    IR = interpolate(h)
+    @test polynomial(IR) == h_symbolic
+
     # Test evaluation and Jacobian
     p0 = randn(ComplexF64, 2)
     u = zeros(ComplexF64, 2)
