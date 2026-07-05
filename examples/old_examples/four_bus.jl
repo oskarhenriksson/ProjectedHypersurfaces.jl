@@ -76,4 +76,7 @@ p0 = evaluate(r, s0) #This returns a vector of NaNs. Upon further inspection,
                      #Note that this is still happening after making the change of restricting to non-singular solutions in the witness set.
 
 ### Routing points 
-pts, res, mon_res = critical_points(r)
+routing_result = critical_points(r)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)

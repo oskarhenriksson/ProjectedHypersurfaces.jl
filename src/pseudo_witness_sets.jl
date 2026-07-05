@@ -126,7 +126,7 @@ end
     track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
 
 Given a pseudo-witness set `PWS` and a point `p` in the downstairs space, move the line downstains so that
-it passes through `p` and track the pseudo-witness points. 
+it passes through `p` and track the pseudo-witness points.
 
 The resulting points are stored in `u` and the success of each track is recorded in `PWS.track_report`.
 
@@ -134,7 +134,7 @@ The resulting points are stored in `u` and the success of each track is recorded
 function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
     tracker = PWS.tracker
     target_parameters!(tracker, p)
-    # PWS.tZ contains the coordinates (t,Z) for the points where the line 
+    # PWS.tZ contains the coordinates (t,Z) for the points where the line
     # (PWS.L.direction*t+PWS.L.point; Z) intersects V(F)
     for (l, w) in enumerate(PWS.tZ)
             HC.track!(tracker, w, 1)
@@ -180,12 +180,12 @@ end
 
 Performs a trace test for completness of a pseudo-witness set; see [^LRS18] for details.
 
-Returns a trace, which theoretically should be zero if and only if the pseudo-witness set 
+Returns a trace, which theoretically should be zero if and only if the pseudo-witness set
 is complete (has all the witness points, meaning that we have correctly computed the degree of the variety).
 
-Since we are working with floating point arithmetic, it will likely not be exactly zero. 
-A very low trace (e.g. on the order of 1e-16) is a strong heutistic indication that the pseudo-witness set is complete, 
-but does not constitute a proof. 
+Since we are working with floating point arithmetic, it will likely not be exactly zero.
+A very low trace (e.g. on the order of 1e-16) is a strong heutistic indication that the pseudo-witness set is complete,
+but does not constitute a proof.
 
 [^LRS18] Leykin, Anton, Jose Israel Rodriguez, and Frank Sottile. "Trace test." Arnold Mathematical Journal 4.1 (2018): 113-125.
 

@@ -21,7 +21,10 @@ r = RoutingFunction([h1, h2]; c=c)
 
 # Critical points
 # pts = read_solutions("./results/two_parabolas/routing_points.txt") |> real
-pts, res, mon_res = critical_points(r)
+routing_result = critical_points(r)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
 
 write_parameters("./results/two_parabolas/monodromy_parameters.txt", parameters(mon_res))
 write_solutions("./results/two_parabolas/monodromy_result.txt", solutions(mon_res))
@@ -29,17 +32,20 @@ write_solutions("./results/two_parabolas/result.txt", solutions(res))
 write_solutions("./results/two_parabolas/routing_points.txt", pts)
 
 # Connecting 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 println("Connected components: $(G)")
 println("Indicies: $(idx)")
-println("Failed info: $(failed_info)")
+println("Failed info: $(failures)")
 println()
 
 write("./results/two_parabolas/connected_components.txt", string(G))
 
 M_x = maximum(p -> abs(p[1]), pts) + 6
 M_y = maximum(p -> abs(p[2]), pts) + 6
-generate_plot(r, pts, G, idx;
+generate_plot(r, routing_result, partition_result;
     h = (x,y) -> (4*y-x^2)*(-4*y-x^2),
     markersize=7,
     arrowstyle=:simple,

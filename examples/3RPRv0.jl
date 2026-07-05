@@ -44,10 +44,16 @@ r = RoutingFunction(h; c=center);
 
 # Routing points
 # pts = read_solutions("./results/3RPRv0/routing_points.txt") |> real
-pts, res, mon_res = critical_points(r)
+routing_result = critical_points(r)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
 
 # Connected components 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 time_end_round1 = time()
 println("Computation time for round 1: $(time_end_round1 - time_start_round1) seconds")
@@ -65,15 +71,15 @@ function analyze_and_save_result()
 
     println("Connected components: $(G)")
     println("Indicies: $(idx)")
-    println("Failed info: $(failed_info)")
+    println("Failed info: $(failures)")
     println()
 
     println("Connected components: $(G)")
     println("Indicies: $(idx)")
-    println("Failed info: $(failed_info)")
+    println("Failed info: $(failures)")
     println()
 
-    generate_plot(r, pts, G, idx;
+    generate_plot(r, routing_result, partition_result;
         h=h_symbolic,
         xlims=(-10, 12),
         ylims=(-10, 12)
@@ -83,7 +89,7 @@ function analyze_and_save_result()
     savefig("./figures/3RPR.svg")
     savefig("./figures/3RPR.png")
 
-    generate_plot(r, pts, G, idx;
+    generate_plot(r, routing_result, partition_result;
         h=h_symbolic,
         root_counting_system=root_counting_system,
         markersize=5,
@@ -109,9 +115,15 @@ options = MonodromyOptions(
     parameter_sampler=p -> 100 .* randn(ComplexF64, length(p)), # larger loops
     max_loops_no_progress=10 # stopping criterion
 )
-pts, res, mon_res = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
+routing_result = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 time_end_round2 = time()
 println("Additional computation time for round 2: $(time_end_round2 - time_start_round2) seconds")

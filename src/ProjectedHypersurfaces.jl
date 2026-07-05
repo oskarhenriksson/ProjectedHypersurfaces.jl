@@ -11,6 +11,7 @@ import HomotopyContinuation.taylor!
 import HomotopyContinuation.ModelKit.evaluate
 import HomotopyContinuation.ModelKit.nvariables
 import HomotopyContinuation.ModelKit.variables
+import HomotopyContinuation.ModelKit.parameters
 
 using Reexport: @reexport
 @reexport using HomotopyContinuation
@@ -20,6 +21,7 @@ include("pseudo_witness_sets.jl")
 include("gradient_cache.jl")
 include("hypersurfaces.jl")
 include("routing_functions.jl")
+include("results.jl")
 include("homotopy.jl")
 include("critical_points.jl")
 include("ode_solving.jl")

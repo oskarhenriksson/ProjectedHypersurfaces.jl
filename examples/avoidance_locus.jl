@@ -21,7 +21,13 @@ h = ProjectedHypersurface(F, [a; b])
 r = RoutingFunction(h)
 
 # Find the complex critical points
-pts, res, mon_res = critical_points(r; start_grid_width=0)
+routing_result = critical_points(r; start_grid_width=0)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
 
 # Connect the critical points
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)

@@ -7,6 +7,7 @@ import HomotopyContinuation: MonodromyOptions, UniquePoints, EndgameTracker
     critical_points(r, S0, rhs0; kwargs...)
 
 Find critical points of the routing function using monodromy and gradient flow.
+Returns a [`RoutingPointsResult`](@ref).
 """
 function critical_points(
     r::RoutingFunction,
@@ -21,11 +22,9 @@ function critical_points(
         parameter_sampler = p -> 10 .* randn(ComplexF64, length(p)),
         max_loops_no_progress = 15
     ),
-    seed = rand(UInt32),
 )
 
     ∇r = RoutingGradient(r)
-
 
     # Step 1: Setup monodromy solver
     MS, H, S0, rhs0, k = _setup_monodromy_solver(
@@ -233,7 +232,7 @@ end
     _solve_and_trace(MS, H, S0, rhs0, new_pts; monodromy_at_zero, start_grid_width)
 
 Perform monodromy solving and trace solutions to ∇r=0.
-Returns (routing_points, result, mon_result).
+Returns a [`RoutingPointsResult`](@ref).
 """
 function _solve_and_trace(
     MS::HomotopyContinuation.MonodromySolver,
@@ -245,7 +244,7 @@ function _solve_and_trace(
     start_grid_width = 5,
 )
     ### Monodromy
-    mon_result = monodromy_solve(MS, S0, rhs0, rand(UInt32);)
+    mon_result = monodromy_solve(MS, S0, rhs0, rand(UInt32))
 
     ### Trace to ∇r=0
     if !monodromy_at_zero
@@ -262,9 +261,9 @@ function _solve_and_trace(
         if start_grid_width > 0
             routing_points = HC.unique_points([routing_points; real.(new_pts)])
         end
-        return routing_points, result, mon_result
+        return RoutingPointsResult(routing_points, result, mon_result)
     else
         routing_points = real_solutions(results(mon_result))
-        return routing_points, mon_result, mon_result
+        return RoutingPointsResult(routing_points, mon_result, mon_result)
     end
 end

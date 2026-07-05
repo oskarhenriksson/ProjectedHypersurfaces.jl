@@ -33,10 +33,16 @@ r = RoutingFunction(h; c=C)
 
 # Critical points
 # pts = read_solutions("./results/kuramoto/routing_points.txt") |> real
-pts, res, mon_res = critical_points(r)
+routing_result = critical_points(r)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
 
 # Connected components
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 # Record computation time
 time_end_round1 = time()
@@ -65,10 +71,10 @@ function analyze_and_save_result()
 
     println("Connected components: $(G)")
     println("Indicies: $(idx)")
-    println("Failed info: $(failed_info)")
+    println("Failed info: $(failures)")
     println()
 
-    generate_plot(r, pts, G, idx;
+    generate_plot(r, routing_result, partition_result;
         h=h_symbolic,
         xlims=(-M_x, M_x),
         ylims=(-M_y, M_y),
@@ -79,7 +85,7 @@ function analyze_and_save_result()
     savefig("./figures/kuramoto.svg")
     savefig("./figures/kuramoto.png")
 
-    generate_plot(r, pts, G, idx;
+    generate_plot(r, routing_result, partition_result;
         h=h_symbolic,
         root_counting_system=root_counting_system,
         markersize=6,
@@ -105,7 +111,14 @@ options = MonodromyOptions(
     parameter_sampler=p -> 100 .* randn(ComplexF64, length(p)), # smaller loops
     max_loops_no_progress=15 # change the stopping criterion
 )
-pts, res, mon_res = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
+routing_result = critical_points(r, solutions(mon_res), parameters(mon_res), options=options)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
+partition_result = partition_of_critical_points(r, routing_result)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 time_end_round2 = time()
 println("Additional computation time for round 2: $(time_end_round2 - time_start_round2) seconds")
 println("Total computation time for round 1 and 2: $((time_end_round1 - time_start_round1) + (time_end_round2 - time_start_round2)) seconds")

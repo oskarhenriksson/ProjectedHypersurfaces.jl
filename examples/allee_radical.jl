@@ -75,7 +75,10 @@ pts_original = [[1.2648270055555684, 0.23668758954766242],
     [0.05913176450416948, 0.46985465616956895]
 ]
 
-G_original, idx_original, failed_info_original = partition_of_critical_points(r_original, pts_original)
+partition_result_original = partition_of_critical_points(r_original, pts_original)
+G_original = partitions(partition_result_original)
+idx_original = morse_indices(partition_result_original)
+failures_original = failed_info(partition_result_original)
 
 pl_original_smaller = generate_plot(
     r_original, pts_original,
@@ -93,18 +96,21 @@ savefig("figures/allee_original_zoomed_in.svg")
 # ROUTING FUNCTION FROM RADICAL GENERATORS
 
 # Previously computed routing points
-pts = [[0.055589798000619875, 0.2045811486869807], 
-    [1.0876774474050412, 0.2831860499258381], 
-    [0.038933207105874466, 0.22760515612401028], 
-    [0.020722376283910805, 0.349756950729071], 
-    [0.005192953854662725, 0.39343926101839477], 
-    [0.03634241480971159, 0.36169019748921266], 
+pts = [[0.055589798000619875, 0.2045811486869807],
+    [1.0876774474050412, 0.2831860499258381],
+    [0.038933207105874466, 0.22760515612401028],
+    [0.020722376283910805, 0.349756950729071],
+    [0.005192953854662725, 0.39343926101839477],
+    [0.03634241480971159, 0.36169019748921266],
     [0.046864792052222624, 0.4669511862494122]
 ]
 
 ∇r.(pts)
 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, pts)
+G = partitions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 pl_radical_smaller = generate_plot(
     r, pts,
