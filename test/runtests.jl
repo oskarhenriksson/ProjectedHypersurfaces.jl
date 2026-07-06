@@ -57,6 +57,15 @@ end
     r_symbolic = h_symbolic/((a - c[1])^2 + (b - c[2])^2 + 1)^3
     ∇r_symbolic = System(differentiate(log(r_symbolic), [a, b]), variables=[a, b]) |> fixed
 
+    # Test sample
+    sample = sample_points(h, 6)
+    @test all(contains.(Ref(h), sample))
+    @test all([abs(evaluate(h_symbolic, [a,b]=>pt)) < 1e-10 for pt in sample])
+
+    # Test interpolation
+    IR = interpolate(h)
+    @test polynomial(IR) == h_symbolic
+
     # Test evaluation and Jacobian
     p0 = randn(ComplexF64, 2)
     u = zeros(ComplexF64, 2)
@@ -102,25 +111,13 @@ end
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    @test_throws MethodError critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
     routing_result = critical_points(r, start_grid_width=0, options=options)
     @test routing_result isa RoutingPointsResult
     @test all(norm(evaluate(∇r, z, zeros(ComplexF64, size(∇r, 1)))) < 1e-12 for z in routing_points(routing_result))
-    @test all(norm.(∇r_symbolic.(solutions(result(routing_result)))) .< 1e-12)
+    @test all(norm.(∇r_symbolic.(complex_critical_points(routing_result))) .< 1e-12)
 
-    pl = generate_plot(
-        r,
-        [[0.0, 0.0]],
-        [[1]],
-        [0];
-        h = (a, b) -> a^2 - 4 * b,
-        root_counting_system = System([x^2 + a * x + b], variables = [x], parameters = [a; b]),
-        annotate_root_counts = true,
-        contour_stepsize = 0.5,
-        xlims = (-1.0, 1.0),
-        ylims = (-1.0, 1.0),
-    )
-    @test !isnothing(pl)
+    # Test that trying to fix a seed via keyword (deprecated) gives an error
+    @test_throws MethodError critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
 
 end;
 
@@ -276,7 +273,7 @@ end;
 
 end;
 
-@testset "Projected hypersurface membership" begin
+@testset "Projected hypersurface sampling and membership" begin
     Random.seed!(12345)
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -285,9 +282,10 @@ end;
     @test contains(h, [2.0, 1.0])
     @test !contains(h, [3.0, 1.0])
     @test_throws ArgumentError contains(h, [2.0])
+
+    sample = sample_points(h, 6)
+    @test all(contains.(Ref(h), sample))
 end
-
-
 @testset "Hypersurface evaluations for quadratic" begin
 
     Random.seed!(12345)

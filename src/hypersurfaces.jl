@@ -1,5 +1,19 @@
-export ProjectedHypersurface, evaluate, gradient, hessian, degree, trace_test
+export ProjectedHypersurface, 
+evaluate,
+gradient,
+hessian,
+degree,
+trace_test,
+sample_points
 
+@doc raw"""
+    ProjectedHypersurface{TC} <: HC.AbstractSystem
+
+
+A hypersurface $\mathcal{H}$ in $\mathbb{C}^k$ that arises through projection of $(k-1)$-dimensional variety in a higher-dimensional ambient space.
+
+The hypersurface $\mathcal{H}$ is represented by a [`PseudoWitnessSet`](@ref).
+"""
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
     projection_vars::Vector{HC.Variable}
@@ -38,6 +52,13 @@ See [`trace_test(::PseudoWitnessSet)`](@ref) for details.
 
 """
 trace_test(h::ProjectedHypersurface) = trace_test(h.PWS)
+
+"""
+    sample_points(h::ProjectedHypersurface, N::Int)
+
+Generate a sample of `N` points from a projected hypersurface `h`. See also [`sample_points(::PseudoWitnessSet,::Int)`](@ref)
+"""
+sample_points(h::ProjectedHypersurface, N::Int) = sample_points(h.PWS, N::Int)
 
 Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurface of degree $(degree(h)) in ambient dimension $(nvariables(h))")
     

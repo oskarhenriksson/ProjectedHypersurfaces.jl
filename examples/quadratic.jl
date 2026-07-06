@@ -2,7 +2,7 @@ using Random, Plots, ProjectedHypersurfaces
 
 mkpath("./results/quadratic");
 
-Random.seed!(12345)
+Random.seed!(1234)
 
 # Incidence variety of the discriminant
 @var a b x
