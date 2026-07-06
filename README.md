@@ -121,7 +121,8 @@ julia> hessian(h, p)
 
 ```
 
-We use `h` to form a routing function as follows. (If we don't specify the center `c` for the denominator, it is chosen randomly.)
+### Gradient roadmaps
+We use `h` to form a *routing function* as follows. (If we don't specify the center `c` for the denominator, it is chosen randomly.)
 
 ```julia-repl
 julia> r = RoutingFunction(h; c=[13, 2])
@@ -145,7 +146,7 @@ julia> routing_points(routing_result)
  [-12.339018441254092, -2.1071368134982262]
 ```
 
-Finally, we connect the critical points that belong to the same component of the complement:
+Finally, we connect the critical points that belong to the same component of the complement, to obtain a *gradient roadmap* of the complement of the hypersurface.
 
 ```julia-repl
 julia> partition_result = partition_of_critical_points(r, routing_result);
@@ -160,11 +161,15 @@ julia> regions(partition_result)
  [2]
 ```
 
-## Illustrations
+The resulting roadmap is illustrated by the following picture.
 
-The following pictures are created via the files `quadratic.jl` and `cubic_two_parameters.jl` in the `examples` directory.
+<img src="figures/quadratic.svg" height="200px"/>
 
-<p align="center"><img src="figures/quadratic.svg" height="200px"/><img src="figures/cubic.svg" height="200px"/></p>
+## Further examples
+
+The following pictures show gradient roadmaps for other examples of discriminants. Code for computing the roadmaps with `ProjectedHypersurfaces.jl` can be found in the `examples` directory.
+
+<p align="center"><img src="figures/cubic.svg" height="180px"/><img src="figures/kuramoto.svg" height="180px"/><img src="figures/3RPR_zoomed_in.svg" height="180px"/></p>
 
 ## Dependencies
 The code relies on the following Julia packages:
