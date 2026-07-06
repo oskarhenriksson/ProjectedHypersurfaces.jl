@@ -97,12 +97,13 @@ function interpolate(
     σ_min = res.S[end]
     σ_gap = res.S[end-1]/res.S[end]
 
-    # Rescale coefficients and rationalize
+    # Rescale coefficients, rationalize and clear denominators
     coefficients = coefficients ./ maximum(abs, coefficients)
     coefficients = rationalize.(coefficients, tol=tol)
-    D = lcm(denominator.(coefficients)...)
-    coefficients = Int.(D .* coefficients)
-    coefficients = coefficients .÷ gcd.(coefficients...)
+    clearing_factor = foldl(lcm, denominator.(coefficients); init=1)
+    coefficients = Int.(clearing_factor .* coefficients)
+    common_factor = foldl(gcd, coefficients; init=1)
+    coefficients = coefficients .÷ common_factor
 
     # Normalize the sign of first nonzero coefficient
     if coefficients[findfirst(!iszero, coefficients)] < 0 
