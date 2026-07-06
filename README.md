@@ -3,9 +3,12 @@
 [![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://oskarhenriksson.github.io/ProjectedHypersurfaces.jl/dev/)
 [![CI](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/actions/workflows/ci.yml)
 
-This repository implements "numerical elimination" techniques for representing, and computing the complement of, real hypersurfaces that arise through projection of a known variety.
+This package implements **numerical elimination** techniques for real algebraic hypersurfaces that arise as the Zariski closure of the projection of a variety with known defining equations. 
 
-It is based on the paper [Elimination Without Eliminating: Computing Complements of Real Hypersurfaces Using Pseudo-Witness Sets](https://arxiv.org/abs/2601.04383) by Paul Breiding, John Cobb, Aviva Englander, Nayda Farnsworth, Jon Hauenstein, Oskar Henriksson, David Johnson, Jordy Lopez Garcia, and Deepak Mundayur.
+The key concept from numerical algebraic geometry that underlies the package is that of **pseudo-witness sets**. For an accessible introduction, as well as some new results on which this package builds, see the recent preprint [Elimination Without Eliminating: Computing Complements of Real Hypersurfaces Using Pseudo-Witness Sets](https://arxiv.org/abs/2601.04383) by Paul Breiding, John Cobb, Aviva Englander, Nayda Farnsworth, Jon Hauenstein, Oskar Henriksson, David Johnson, Jordy Lopez Garcia, and Deepak Mundayur (2026).
+
+> [!NOTE]
+> This package is under active early development. Interfaces and behavior may change as the package evolves. In particular, no formal versioned releases are not available yet. For reproducible use, consider pinning to a specific git commit. If you encounter bugs, have questions or want to propose features, feel free to raise an [issue](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/issues) or reach out directly to one of the authors.
 
 ## Installation
 
@@ -57,7 +60,7 @@ julia> trace_test(h)
 ```
 
 ### Membership test
-The pseduowitness set constitutes a powerful implicit representation of the hypersurface. For instance, we can test membership by moving the pseudowitness line so that it passes through the candidate point, and check if the pseudowitness points converge to the candidate.
+The pseduo-witness set constitutes a powerful implicit representation of the hypersurface. For instance, we can test membership by moving the pseudowitness line so that it passes through the candidate point, and check if the pseudowitness points converge to the candidate.
 
 ```julia-repl
 julia> contains(h, [2, 1])
@@ -169,7 +172,7 @@ The resulting roadmap is illustrated by the following picture.
 
 The following pictures show gradient roadmaps for other examples of discriminants. Code for computing the roadmaps with `ProjectedHypersurfaces.jl` can be found in the `examples` directory.
 
-<p align="center"><img src="figures/cubic.svg" height="180px"/><img src="figures/kuramoto.svg" height="180px"/><img src="figures/3RPR_zoomed_in.svg" height="180px"/></p>
+<p align="center"><img src="figures/cubic.svg" height="180px"/><img src="figures/kuramoto_zoomed_in.svg" height="180px"/><img src="figures/3RPR_zoomed_in.svg" height="180px"/></p>
 
 ## Dependencies
 The code relies on the following Julia packages:
