@@ -12,7 +12,7 @@ sample_points
 
 A hypersurface $\mathcal{H}$ in $\mathbb{C}^k$ that arises through projection of $(k-1)$-dimensional variety in a higher-dimensional ambient space.
 
-The hypersurface $\mathcal{H}$ is represented by a [`PseudoWitnessSet`](@ref).
+The hypersurface $\mathcal{H}$ is represented by a pseudowitness set.
 """
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet

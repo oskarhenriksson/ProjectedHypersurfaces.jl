@@ -17,7 +17,7 @@ Order = [:type, :function]
 
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
-Pages = ["pseduo_witness_sets.jl"]
+Pages = ["pseudo_witness_sets.jl"]
 Order = [:type, :function]
 ```
 
@@ -25,7 +25,7 @@ Order = [:type, :function]
 
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
-Pages = ["pseduo_witness_sets.jl"]
+Pages = ["interpolation.jl"]
 Order = [:type, :function]
 ```
 
