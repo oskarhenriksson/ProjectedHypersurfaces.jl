@@ -8,7 +8,7 @@ An object that contains the result of interpolating a projected hypersurface to 
 """
 struct InterpolationResult
     polynomial::Expression
-    coefficients::Vector{Rational{Int}}
+    coefficients::Vector{Int}
     exponent_vectors::Vector{Tuple{Vararg{Int}}}
     singular_values::Vector{Float64}
     σ_min::Float64
