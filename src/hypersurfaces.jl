@@ -4,7 +4,8 @@ gradient,
 hessian,
 degree,
 trace_test,
-sample_points
+sample_points,
+decompose
 
 @doc raw"""
     ProjectedHypersurface{TC} <: HC.AbstractSystem
@@ -64,6 +65,23 @@ Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurfac
     
 ModelKit.variables(h::ProjectedHypersurface{TC}) where {TC} = h.projection_vars
 ModelKit.nvariables(h::ProjectedHypersurface{TC}) where {TC} = length(h.projection_vars)
+
+@doc raw"""
+    decompose(h::ProjectedHypersurface)
+
+Decomposes the projected hypersurface `h` into its irreducible components. 
+Returns a vector of [`ProjectedHypersurface`](@ref) objects, one for each component.
+
+See [`decompose(::PseudoWitnessSet)`](@ref) for details.
+
+"""
+function decompose(h::ProjectedHypersurface)
+    PWS_components = decompose(h.PWS)
+    map(PWS_components) do PWS_comp
+        ProjectedHypersurface(PWS_comp.F, h.projection_vars; PWS = PWS_comp)
+    end
+end
+
 
 function Base.contains(
     h::ProjectedHypersurface,

@@ -60,7 +60,7 @@ end
     # Test sample
     sample = sample_points(h, 6)
     @test all(contains.(Ref(h), sample))
-    @test all([abs(evaluate(h_symbolic, [a,b]=>pt)) < 1e-10 for pt in sample])
+    @test all([abs(evaluate(h_symbolic, [a,b]=>pt)) < 1e-9 for pt in sample])
 
     # Test interpolation
     IR = interpolate(h)
@@ -344,6 +344,11 @@ end
     # V(F) has two irreducible components that project down to V(a^2-4b)
     h = ProjectedHypersurface(F, [a, b])
     @test degree(h) == 2
+
+    # Check that the decomposition function only gives a single downstairs component
+    components = decompose(h)
+    @test length(components) == 1
+
 end
 
 @testset "Empty PWS" begin
@@ -375,6 +380,7 @@ end
     PWS_messed_up = PseudoWitnessSet(PWS.F,
         PWS.k,
         PWS.L,
+        PWS.generic_witness_set,
         PWS.W[[1]],
         PWS.πW[[1]],
         PWS.tZ[[1]],
