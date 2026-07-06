@@ -8,7 +8,7 @@ An object that contains the result of interpolating a projected hypersurface to 
 """
 struct InterpolationResult
     polynomial::Expression
-    coefficients::Vector{Int}
+    coefficients::Union{Vector{Rational{Int}}, Vector{Int}}
     exponent_vectors::Vector{Tuple{Vararg{Int}}}
     singular_values::Vector{Float64}
     σ_min::Float64
@@ -100,10 +100,14 @@ function interpolate(
     # Rescale coefficients, rationalize and clear denominators
     coefficients = coefficients ./ maximum(abs, coefficients)
     coefficients = rationalize.(coefficients, tol=tol)
-    clearing_factor = foldl(lcm, denominator.(coefficients); init=1)
-    coefficients = Int.(clearing_factor .* coefficients)
-    common_factor = foldl(gcd, coefficients; init=1)
-    coefficients = coefficients .÷ common_factor
+    try
+        clearing_factor = foldl(lcm, denominator.(coefficients); init=1)
+        coefficients = Int.(clearing_factor .* coefficients)
+        common_factor = foldl(gcd, coefficients; init=1)
+        coefficients = coefficients .÷ common_factor
+    catch e
+        @warn "Failed to clear denominators of coefficients. Returning rational coefficients."
+    end
 
     # Normalize the sign of first nonzero coefficient
     if coefficients[findfirst(!iszero, coefficients)] < 0 
