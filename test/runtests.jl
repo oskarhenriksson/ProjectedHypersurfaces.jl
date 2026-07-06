@@ -345,7 +345,7 @@ end
     h = ProjectedHypersurface(F, [a, b])
     @test degree(h) == 2
 
-    # Check that the decomposition function only gives a single downstairs components
+    # Check that the decomposition function only gives a single downstairs component
     components = decompose(h)
     @test length(components) == 1
 

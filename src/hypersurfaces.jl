@@ -4,7 +4,8 @@ gradient,
 hessian,
 degree,
 trace_test,
-sample_points
+sample_points,
+decompose
 
 @doc raw"""
     ProjectedHypersurface{TC} <: HC.AbstractSystem

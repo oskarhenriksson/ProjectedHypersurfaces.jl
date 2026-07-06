@@ -1,4 +1,4 @@
-export PseudoWitnessSet, degree, total_dim, system, trace_test, sample_points
+export PseudoWitnessSet, degree, total_dim, system, trace_test, sample_points, decompose
 struct Line{T<:Number}
     point::Vector{T}
     direction::Vector{T}
@@ -40,7 +40,7 @@ Optional inputs:
 
 - `linear_subspace_codim`: The codimension of the linear space used for the witness set. Defaults to `n - length(F)`.
 - `L`: The linear space used for the witness set. Should be the preimage under $\pi$ of a linear subspace in $\mathbb{C}^k$.
-- `filter_condition`: A function that takes a point in $\mathbb{C}^{n-k}$ and returns a boolean. If provided, only points 
+- `filter_condition`: A function that takes a point in $\mathbb{C}^{n}$ and returns a boolean. If provided, only points 
 in the pseudo-witness set that satisfy this condition will be included. Can be used to filter out irrelevant irreducible components.
 
 """
@@ -59,7 +59,7 @@ function PseudoWitnessSet(
     if isnothing(generic_witness_set)
         
         L_generic = rand_subspace(size(F, 2); codim = k - 1)
-        generic_witness_result = HC.solve(F, target_subspace = L_generic, start_system)
+        generic_witness_result = HC.solve(F, target_subspace = L_generic, start_system = start_system)
 
         # Check for singular solutions
         if nsingular(generic_witness_result) > 0
@@ -90,7 +90,7 @@ function PseudoWitnessSet(
     lifted_linear_subspace = LinearSubspace(hcat(L.linear_subspace.extrinsic.A, zeros(k-1, n-k)), L.linear_subspace.extrinsic.b)
     E = HC.solve(F, W_generic, start_subspace = L_generic, target_subspace = lifted_linear_subspace)
     
-    # Repopulate the solution set via monodromy (safetey feature if solutions were lost)
+    # Repopulate the solution set via monodromy (safety feature if solutions were lost)
     M = monodromy_solve(F, solutions(E), lifted_linear_subspace)
 
     # Unprojected pseudo-witness points
