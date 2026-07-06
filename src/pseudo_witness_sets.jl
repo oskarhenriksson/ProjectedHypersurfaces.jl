@@ -234,14 +234,22 @@ function sample_points(PWS::PseudoWitnessSet, N::Int)
     πW₀ = PWS.πW
     p₀ = PWS.L.point
     sample = copy(πW₀)
-    for _ = 1:number_of_linear_spaces-1
+
+    max_attempts = max(1, 10 * number_of_linear_spaces)
+    attempts = 0
+    while length(sample) < N && attempts < max_attempts
         v = randn(ComplexF64,PWS.k)
         p = p₀ + v
         πW_new = ProjectedHypersurfaces.track_projected_point(PWS, p)
         πW_new_succeeded = πW_new[PWS.track_report]
         append!(sample, πW_new_succeeded)
+        attempts += 1
     end
 
+    if length(sample) < N
+        throw(ArgumentError("Failed to sample $N points: only $(length(sample)) tracks succeeded."))
+    end
+    
     # Return the desired number of sample points
     sample[1:N]
 
