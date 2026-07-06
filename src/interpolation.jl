@@ -1,6 +1,6 @@
 export interpolate, InterpolationResult, polynomial
 
-"""
+@doc raw"""
     InterpolationResult
 
 An object that contains the result of interpolating a projected hypersurface to obtain a polynomial representation of the discriminant.
@@ -18,7 +18,7 @@ struct InterpolationResult
 end
 
 
-"""
+@doc raw"""
     polynomial(result::InterpolationResult)
 
 Returns the polynomial of an [`InterpolationResult`](@ref) object. 
@@ -38,7 +38,7 @@ function Base.show(io::IO, result::InterpolationResult)
 end
 
 
-"""
+@doc raw"""
     interpolate(
     h::ProjectedHypersurface;
     tol::Float64=1e-8,

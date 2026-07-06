@@ -260,11 +260,11 @@ end;
         partition_of_critical_points(r, RoutingPointsResult(pts, nothing, nothing))
 
     @test partition_result isa PartitionResult
-    @test sort(partitions(partition_result)) == [[1, 2, 4], [3]]
+    @test sort(regions(partition_result)) == [[1, 2, 4], [3]]
     @test morse_indices(partition_result) == [1, 0, 0, 0]
     @test isempty(failed_info(partition_result))
     @test return_code(partition_result) == :success
-    @test partitions(partition_result_from_routing_result) == partitions(partition_result)
+    @test regions(partition_result_from_routing_result) == regions(partition_result)
     @test !applicable(iterate, partition_result)
     partition_display = sprint(show, partition_result)
     @test !isempty(partition_display)

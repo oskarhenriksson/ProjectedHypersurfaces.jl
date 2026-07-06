@@ -12,7 +12,7 @@ sample_points
 
 A hypersurface $\mathcal{H}$ in $\mathbb{C}^k$ that arises through projection of $(k-1)$-dimensional variety in a higher-dimensional ambient space.
 
-The hypersurface $\mathcal{H}$ is represented by a [`PseudoWitnessSet`](@ref).
+The hypersurface $\mathcal{H}$ is represented by a pseudowitness set.
 """
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
@@ -42,7 +42,7 @@ end
 degree(h::ProjectedHypersurface) = degree(h.PWS)
 
 
-"""
+@doc raw"""
     trace_test(h::ProjectedHypersurface)
 
 Performs a trace test to vertify completeness of the underlying pseduo-witness set and therefore correctness of the degree.
@@ -53,7 +53,7 @@ See [`trace_test(::PseudoWitnessSet)`](@ref) for details.
 """
 trace_test(h::ProjectedHypersurface) = trace_test(h.PWS)
 
-"""
+@doc raw"""
     sample_points(h::ProjectedHypersurface, N::Int)
 
 Generate a sample of `N` points from a projected hypersurface `h`. See also [`sample_points(::PseudoWitnessSet,::Int)`](@ref)
