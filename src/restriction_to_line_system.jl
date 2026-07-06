@@ -1,5 +1,3 @@
-export RestrictionToLineSystem
-
 # `AbstractSystem` for the substitution x = [p + t * direction; w].
 # The base point p is treated as a parameter, while the line direction is fixed.
 """
