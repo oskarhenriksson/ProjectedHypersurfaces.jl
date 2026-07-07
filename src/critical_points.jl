@@ -58,7 +58,7 @@ function critical_points(
     )
 end
 
-@doc raw"""
+"""
     _setup_monodromy_solver(∇r, S0, rhs0; monodromy_at_zero, options)
 
 Set up the monodromy solver and initial start pair.
@@ -235,7 +235,7 @@ function _expand_start_solutions(
     return S0, new_pts
 end
 
-@doc raw"""
+"""
     _solve_and_trace(MS, H, S0, rhs0, new_pts; monodromy_at_zero, start_grid_width)
 
 Perform monodromy solving and trace solutions to ∇r=0.
