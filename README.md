@@ -103,6 +103,28 @@ Interpolation result for projected hypersurface
  Polynomial: -4*b + a^2
 ```
 
+### Irreducible decomposition
+We can do a numerical irreducible decomposition of the hypersurfaces. For instance:
+
+```julia-repl
+julia> @var a b x;
+julia> f = b + a*x + 2*a*x^4 + a^2*x^3 + 2*b*x^3 + b^2*x + 2*a*b*x^2 + x^2 + x^5;
+julia> F = System([f, differentiate(f, x)], variables=[a, b, x]);
+julia> h = ProjectedHypersurface(F, [a, b])
+Projected hypersurface of degree 6 in ambient dimension 2
+
+julia> components = decompose(h)
+2-element Vector{ProjectedHypersurface}:
+ Projected hypersurface of degree 4 in ambient dimension 2
+ Projected hypersurface of degree 2 in ambient dimension 2
+
+julia> polynomial.(interpolate.(components))
+2-element Vector{Expression}:
+                            -4*b + a^2
+ 27 - 18*a*b - a^2*b^2 + 4*a^3 + 4*b^3
+
+```
+
 ### Evaluation
 We can use `h` to evaluate (up to a constant) the logarithm of the defining polynomial of the discriminant, as well as the gradient and Hessian. 
 
