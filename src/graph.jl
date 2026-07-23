@@ -6,6 +6,11 @@ export return_code,
     failed_info,
     nregions
 
+export Region,
+    critical_points,
+    euler_characteristic,
+    number
+
 ### This is adapted from https://github.com/JuliaAlgebra/HypersurfaceRegions.jl/blob/main/src/partition.jl
 
 
@@ -152,6 +157,7 @@ function partition_of_critical_points(
                 LightGraphs.add_edge!(graph, pair_neg[1], pair_neg[2])
             else
                 push!(
+                    
                     failed_info_list,
                     [critical_point_index, -epsilon, unstable_eigenvector, failed_info_neg],
                 )
@@ -294,4 +300,130 @@ function Base.show(io::IO, R::PartitionResult)
     println(io, "• return_code → :$(return_code(R))")
     println(io, "• $(nfailures) failed path(s)")
     print(io, "• morse_indices → ", isnothing(morse_indices(R)) ? "not computed" : length(morse_indices(R)))
+end
+
+
+### Adapted from the `Region` struct in
+### https://github.com/JuliaAlgebra/HypersurfaceRegions.jl/blob/main/src/output.jl
+
+@doc raw"""
+    Region
+
+A single region of a [`RoutingFunction`](@ref) `r`, i.e. one connected component
+of critical points as computed by [`partition_of_critical_points`](@ref).
+Modelled after the `Region` struct in
+[HypersurfaceRegions.jl](https://github.com/JuliaAlgebra/HypersurfaceRegions.jl).
+
+A `Region` bundles the critical points lying in the region together with their
+Morse indices, the Euler characteristic of the region, and a region number. The
+routing function `r` is stored so that a point in the parameter space can be
+flowed to a critical point in a membership test.
+
+# Fields
+- `critical_points::Vector{Vector{Float64}}`: the critical points in the region.
+- `morse_indices::Vector{Int}`: the Morse index of each critical point.
+- `χ::Int`: the Euler characteristic of the region, `∑ᵢ (-1)^μᵢ`.
+- `r::RoutingFunction`: the routing function whose critical points these are.
+- `region_number::Int`: the index of this region within the partition.
+
+See also [`critical_points`](@ref), [`morse_indices`](@ref),
+[`euler_characteristic`](@ref) and [`number`](@ref).
+"""
+struct Region
+    critical_points::Vector{Vector{Float64}}
+    morse_indices::Vector{Int}
+    χ::Int
+    r::RoutingFunction
+    region_number::Int
+end
+
+@doc raw"""
+    Region(critical_points, morse_indices, r::RoutingFunction, region_number)
+
+Construct a [`Region`](@ref) from its critical points and their Morse indices,
+computing the Euler characteristic `χ = ∑ᵢ (-1)^μᵢ` automatically.
+"""
+function Region(
+    critical_points::AbstractVector{<:AbstractVector{<:Real}},
+    morse_indices::AbstractVector{<:Integer},
+    r::RoutingFunction,
+    region_number::Integer,
+)
+    @assert length(critical_points) == length(morse_indices) "There must be one Morse index per critical point"
+    χ = sum(μ -> (-1)^μ, morse_indices; init = 0)
+    Region(
+        [Float64.(c) for c in critical_points],
+        collect(Int, morse_indices),
+        χ,
+        r,
+        Int(region_number),
+    )
+end
+
+@doc raw"""
+    critical_points(C::Region)
+
+Return the critical points of the routing function that lie in the region `C`.
+"""
+critical_points(C::Region) = C.critical_points
+
+@doc raw"""
+    morse_indices(C::Region)
+
+Return the Morse index of each critical point in the region `C`.
+"""
+morse_indices(C::Region) = C.morse_indices
+
+@doc raw"""
+    euler_characteristic(C::Region)
+
+Return the Euler characteristic `∑ᵢ (-1)^μᵢ` of the region `C`.
+"""
+euler_characteristic(C::Region) = C.χ
+
+@doc raw"""
+    number(C::Region)
+
+Return the number identifying the region `C` within its partition.
+"""
+number(C::Region) = C.region_number
+
+function Base.show(io::IO, C::Region)
+    header = "Region $(number(C))"
+    println(io, header)
+    println(io, "="^length(header))
+    println(io, "• $(length(critical_points(C))) critical point(s)")
+    println(io, "• morse_indices → ", morse_indices(C))
+    print(io, "• χ → ", euler_characteristic(C))
+end
+
+@doc raw"""
+    regions(R::PartitionResult, r::RoutingFunction, crit_pts)
+
+Build the vector of [`Region`](@ref) objects described by a [`PartitionResult`](@ref)
+`R`, which must have been obtained from `partition_of_critical_points(r, crit_pts)`.
+
+Each connected component of `R` becomes one `Region`, carrying the coordinates of
+its critical points (taken from `crit_pts`), their Morse indices, the Euler
+characteristic, and the routing function `r`. The routing function is stored on
+each region so that the resulting vector is self-contained and can be passed
+directly to [`membership`](@ref).
+
+This differs from [`regions(R::PartitionResult)`](@ref), which returns the
+connected components as vectors of critical point indices.
+"""
+function regions(
+    R::PartitionResult,
+    r::RoutingFunction,
+    crit_pts::AbstractVector{<:AbstractVector{<:Real}},
+)
+    mi = morse_indices(R)
+    components = regions(R)
+    if isnothing(mi)
+        @assert isempty(components) "Cannot build regions: Morse indices were not computed"
+        return Region[]
+    end
+    map(enumerate(components)) do (i, component)
+        Region([crit_pts[j] for j in component], [mi[j] for j in component], r, i)
+    end
 end
