@@ -2,15 +2,15 @@
 # See also https://www.biorxiv.org/content/10.1101/2021.02.03.429609v2.full
 # More recent paper: https://arxiv.org/pdf/2501.19062
 
-using Random, Plots, LinearAlgebra,  ImplicitPlots, ProjectedHypersurfaceRegions
+using Random, Plots, LinearAlgebra,  ImplicitPlots, ProjectedHypersurfaces
 
 Random.seed!(123)
 
 # Set up incidence variety of discriminant
 @var a b x[1:3]
 steady_state = [
-    x[1]*(1 - x[1])*(x[1] - b) - 2*a*x[1] + a*x[2] + a*x[3],
-    x[2]*(1 - x[2])*(x[2] - b) - 2*a*x[2] + a*x[1] + a*x[3],
+    x[1]*(1 - x[1])*(x[1] - b) - 2*a*x[1] + a*x[2] + a*x[3], 
+    x[2]*(1 - x[2])*(x[2] - b) - 2*a*x[2] + a*x[1] + a*x[3], 
     x[3]*(1 - x[3])*(x[3] - b) - 2*a*x[3] + a*x[1] + a*x[2]
 ]
 Jac = differentiate.(steady_state, x')
@@ -75,7 +75,10 @@ pts_original = [[1.2648270055555684, 0.23668758954766242],
     [0.05913176450416948, 0.46985465616956895]
 ]
 
-G_original, idx_original, failed_info_original = partition_of_critical_points(r_original, pts_original)
+partition_result_original = partition_of_critical_points(r_original, pts_original)
+G_original = regions(partition_result_original)
+idx_original = morse_indices(partition_result_original)
+failures_original = failed_info(partition_result_original)
 
 pl_original_smaller = generate_plot(
     r_original, pts_original,
@@ -104,7 +107,10 @@ pts = [[0.055589798000619875, 0.2045811486869807],
 
 ∇r.(pts)
 
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, pts)
+G = regions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 
 pl_radical_smaller = generate_plot(
     r, pts,

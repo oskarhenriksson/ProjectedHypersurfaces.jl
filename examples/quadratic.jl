@@ -1,8 +1,8 @@
-using Random, Plots, ProjectedHypersurfaceRegions
+using Random, Plots, ProjectedHypersurfaces
 
 mkpath("./results/quadratic");
 
-Random.seed!(12345)
+Random.seed!(1234)
 
 # Incidence variety of the discriminant
 @var a b x
@@ -23,7 +23,10 @@ r = RoutingFunction(h; c=c)
 
 # Find the complex critical points 
 # pts = read_solutions("./results/quadratic/routing_points.txt") |> real
-pts, res, mon_res = critical_points(r)
+routing_result = critical_points(r)
+pts = routing_points(routing_result)
+res = result(routing_result)
+mon_res = monodromy_result(routing_result)
 
 write_parameters("./results/quadratic/monodromy_parameters.txt", parameters(mon_res))
 write_solutions("./results/quadratic/monodromy_result.txt", solutions(mon_res))
@@ -31,10 +34,13 @@ write_solutions("./results/quadratic/result.txt", solutions(res))
 write_solutions("./results/quadratic/routing_points.txt", pts)
 
 # Connect the critical points
-G, idx, failed_info = partition_of_critical_points(r, pts)
+partition_result = partition_of_critical_points(r, routing_result)
+G = regions(partition_result)
+idx = morse_indices(partition_result)
+failures = failed_info(partition_result)
 println("Connected components: $(G)")
 println("Indicies: $(idx)")
-println("Failed info: $(failed_info)")
+println("Failed info: $(failures)")
 println()
 
 write("./results/quadratic/connected_components.txt", string(G))
@@ -42,7 +48,7 @@ write("./results/quadratic/connected_components.txt", string(G))
 # Analyze root counts and plot result
 M_x = maximum(p -> abs(p[1]), pts) + 4
 M_y = maximum(p -> abs(p[2]), pts) + 3
-generate_plot(r, pts, G, idx;
+generate_plot(r, routing_result, partition_result;
     h=(a, b) -> (a^2 - 4 * b),
     markersize=7,
     annotation_textsize=6,

@@ -1,5 +1,10 @@
 export RoutingFunction, evaluate, evaluate_and_jacobian, gradient, hessian, denominator_exponent, RoutingGradient
 
+@doc raw"""
+    RoutingFunction{TQ,TP,TC} <: HC.AbstractSystem
+
+A routing function for a collection of projected hypersurfaces.
+"""
 struct RoutingFunction{TQ,TP,TC} <: HC.AbstractSystem
     H::Vector{ProjectedHypersurface{TC}} 
     projection_vars::Vector{HC.Variable}
@@ -10,6 +15,31 @@ struct RoutingFunction{TQ,TP,TC} <: HC.AbstractSystem
     q::Expression
     ∇logqe::Union{TQ, Nothing}
 end
+
+@doc raw"""
+    RoutingFunction(
+    H::Vector{ProjectedHypersurface};
+    e::Union{Int,Nothing} = nothing,
+    c::Union{Vector,Nothing} = nothing,
+    g::Union{Vector{Expression},Vector{Variable},Nothing} = nothing,
+)
+
+Construct a routing function for a collection of projected hypersurfaces `H`. The routing function is defined as
+$$
+r(x) = \frac{\prod_{h \in H} h(x) \prod_{g \in G} g(x)}{(1 + \|x - c\|^2)^e}
+$$
+where $G$ is a collection of additional polynomials and $c$ is a vector in the ambient space. 
+The denominator exponent `e` is automatically set so that the denominator has higher degree than the numerator.
+
+Input arguments:
+- `H`: A vector of [`ProjectedHypersurface`](@ref) objects.
+
+Keyword arguments:
+- `e`: The exponent of the denominator. If not provided, it is automatically set to be greater than the degree of the numerator.
+- `c`: A vector in the ambient space. If not provided, it is randomly generated
+- `g`: A vector of additional polynomials to include in the numerator. 
+
+"""
 function RoutingFunction(
     H::Vector{<:ProjectedHypersurface};
     e::Union{Int,Nothing} = nothing,

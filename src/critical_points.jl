@@ -1,6 +1,13 @@
 
 export critical_points
 
+export RoutingPointsResult,
+    PartitionResult,
+    routing_points,
+    complex_critical_points,
+    result,
+    monodromy_result
+
 import HomotopyContinuation: MonodromyOptions, UniquePoints, EndgameTracker
 
 struct StartSolutionExpansionResult{TS,TN}
@@ -9,21 +16,37 @@ struct StartSolutionExpansionResult{TS,TN}
     interrupted::Bool
 end
 
-function Base.iterate(result::StartSolutionExpansionResult, state = 1)
+function Base.iterate(expansion::StartSolutionExpansionResult, state = 1)
     if state == 1
-        return result.start_solutions, 2
+        return expansion.start_solutions, 2
     elseif state == 2
-        return result.routing_points, 3
-    else
-        return nothing
+        return expansion.routing_points, 3
     end
+    return nothing
 end
 
 Base.length(::StartSolutionExpansionResult) = 2
 
-_is_interrupt_exception(e) =
-    e isa InterruptException ||
-    (e isa TaskFailedException && _is_interrupt_exception(e.task.exception))
+function _is_interrupt_exception(exception)
+    if exception isa InterruptException
+        return true
+    elseif exception isa TaskFailedException
+        return _is_interrupt_exception(exception.task.exception)
+    elseif exception isa CompositeException
+        return any(_is_interrupt_exception, exception.exceptions)
+    end
+    return false
+end
+
+function _run_interruptible(f; catch_interrupt)
+    try
+        f()
+        return false
+    catch exception
+        catch_interrupt && _is_interrupt_exception(exception) || rethrow()
+        return true
+    end
+end
 
 function _solve_homotopy(H, starts; catch_interrupt)
     starts = collect(starts)
@@ -32,16 +55,23 @@ function _solve_homotopy(H, starts; catch_interrupt)
     return result, interrupted
 end
 
-"""
+_monodromy_was_interrupted(result) =
+    hasproperty(result, :returncode) && result.returncode == :interrupted
+
+@doc raw"""
     critical_points(r, S0, rhs0; kwargs...)
 
 Find critical points of the routing function using monodromy and gradient flow.
+Returns a [`RoutingPointsResult`](@ref).
 
-The start-solution expansion can be disabled with `expand_start_solutions = false`.
-When expansion is enabled, the Newton and gradient-flow substeps can be controlled
-independently with `expand_start_solutions_newton` and
-`expand_start_solutions_gradient_flow`. If `catch_interrupt = true`, interrupting a
-long-running phase returns the solutions found so far when possible.
+Set `expand_start_solutions = false` to disable all start-solution expansion.
+The Newton-grid and gradient-flow expansion phases can be controlled independently
+with `expand_start_solutions_newton` and `expand_start_solutions_gradient_flow`.
+When Newton expansion is disabled, gradient-flow endpoints are accepted only when
+their residual is below `1e-10`; no Newton refinement is performed.
+
+If `catch_interrupt = true`, an interrupted phase returns the valid routing points
+found so far in a result whose [`return_code`](@ref) is `:interrupted`.
 """
 function critical_points(
     r::RoutingFunction,
@@ -60,11 +90,9 @@ function critical_points(
         parameter_sampler = p -> 10 .* randn(ComplexF64, length(p)),
         max_loops_no_progress = 15
     ),
-    seed = rand(UInt32),
 )
 
     ∇r = RoutingGradient(r)
-
 
     # Step 1: Setup monodromy solver
     MS, H, S0, rhs0, k = _setup_monodromy_solver(
@@ -74,7 +102,7 @@ function critical_points(
     )
 
     # Step 2: Expand start solutions via Newton's method and gradient flow
-    expansion_result = _expand_start_solutions(
+    expansion = _expand_start_solutions(
         ∇r, H, S0, rhs0, k;
         verbose = verbose,
         start_grid_width = start_grid_width,
@@ -86,10 +114,11 @@ function critical_points(
         catch_interrupt = catch_interrupt,
         monodromy_at_zero = monodromy_at_zero,
     )
-    S0, new_pts = expansion_result
-    if expansion_result.interrupted
-        verbose && @warn "Interrupted while expanding start solutions. Returning routing points found so far."
-        return real.(new_pts), nothing, nothing
+    S0, new_pts = expansion
+    if expansion.interrupted
+        verbose &&
+            @warn "Interrupted while expanding start solutions. Returning routing points found so far."
+        return RoutingPointsResult(real.(new_pts), nothing, nothing, :interrupted)
     end
 
     # Step 3: Solve and trace to critical points
@@ -98,7 +127,6 @@ function critical_points(
         monodromy_at_zero = monodromy_at_zero,
         expand_start_solutions = expand_start_solutions && start_grid_width > 0,
         catch_interrupt = catch_interrupt,
-        seed = seed,
     )
 end
 
@@ -211,7 +239,8 @@ function _expand_start_solutions(
         newton_total_count = prod(length.(newton_grid))
         verbose && println("Expanding start solutions via Newton's method...")
         start_pt = zeros(ComplexF64, k)
-        ProgressMeter.@showprogress for start_point in Iterators.product(newton_grid...)
+        interrupted = _run_interruptible(; catch_interrupt = catch_interrupt) do
+            ProgressMeter.@showprogress for start_point in Iterators.product(newton_grid...)
             start_pt .= start_point # this avoids allocations from splatting the tuple into the newton function
             # Newton's method on each initial guess
             try
@@ -220,19 +249,16 @@ function _expand_start_solutions(
                     newton_success_count += 1
                     push!(newton_pts, pt)
                 end
-            catch e
-                if _is_interrupt_exception(e)
-                    catch_interrupt || rethrow(e)
-                    interrupted = true
-                    break
-                end
+            catch exception
+                _is_interrupt_exception(exception) && rethrow()
                 continue
+            end
             end
         end
     end
 
     num_newton_pts = 0
-    if length(newton_pts) > 0
+    if !isempty(newton_pts)
         newton_pts = HC.unique_points(newton_pts)
         num_newton_pts = length(newton_pts)
     end
@@ -245,14 +271,16 @@ function _expand_start_solutions(
     end
 
     if expand_start_solutions_newton
-        verbose && println("Successful Newton's method attempts: $(newton_success_count) out of $(newton_total_count) ($(round(newton_success_count / newton_total_count * 100, digits=2))%)")
+        verbose && println(
+            "Successful Newton's method attempts: $(newton_success_count) out of $(newton_total_count) ($(round(newton_success_count / newton_total_count * 100, digits=2))%)",
+        )
         verbose && println("Found $num_newton_pts solutions to ∇r(z)=rhs0.")
     end
 
     if interrupted
         return StartSolutionExpansionResult(S0, new_pts, true)
     end
-    
+
     # Now we try gradient flow
     gradient_success_count = 0
     gradient_total_count = 0
@@ -268,36 +296,33 @@ function _expand_start_solutions(
         verbose && println("Expanding the set of start solutions via gradient flow...")
 
         start_pt = zeros(k)
-        ProgressMeter.@showprogress for start_point in Iterators.product(grid...)
-            try
-                start_pt .= start_point # this avoids allocations from splatting the tuple into the ODEProblem
-                prob = SciMLBase.ODEProblem(g, start_pt, tspan)
-                sol = DE.solve(prob, reltol = 1e-6, abstol = 1e-6)
-                convergence_point = last(sol.u)
-                if expand_start_solutions_newton
-                    candidate_point = newton(∇r, convergence_point) |> solution
-                    residual_tolerance = 1e-10
-                else
-                    candidate_point = ComplexF64.(convergence_point)
-                    residual_tolerance = 1e-6
+        interrupted = _run_interruptible(; catch_interrupt = catch_interrupt) do
+            ProgressMeter.@showprogress for start_point in Iterators.product(grid...)
+                try
+                    start_pt .= start_point # this avoids allocations from splatting the tuple into the ODEProblem
+                    prob = SciMLBase.ODEProblem(g, start_pt, tspan)
+                    sol = DE.solve(prob, reltol = 1e-6, abstol = 1e-6)
+                    convergence_point = last(sol.u)
+                    candidate_point =
+                        expand_start_solutions_newton ?
+                        newton(∇r, convergence_point) |> solution :
+                        ComplexF64.(convergence_point)
+                    if norm(evaluate(∇r, candidate_point)) < 1e-10
+                        push!(new_pts, candidate_point)
+                        gradient_success_count += 1
+                    end
+                catch exception
+                    _is_interrupt_exception(exception) && rethrow()
+                    continue
                 end
-                if norm(evaluate(∇r, candidate_point)) < residual_tolerance
-                    push!(new_pts, candidate_point)
-                    gradient_success_count += 1
-                end
-            catch e
-                if _is_interrupt_exception(e)
-                    catch_interrupt || rethrow(e)
-                    interrupted = true
-                    break
-                end
-                continue
             end
         end
-        if length(new_pts) > 0
+        if !isempty(new_pts)
             new_pts = HC.unique_points(new_pts)
         end
-        verbose && println("Successful gradient flow attempts: $(gradient_success_count) out of $(gradient_total_count) ($(round(gradient_success_count / gradient_total_count * 100, digits=2))%)")
+        verbose && println(
+            "Successful gradient flow attempts: $(gradient_success_count) out of $(gradient_total_count) ($(round(gradient_success_count / gradient_total_count * 100, digits=2))%)",
+        )
         verbose && println("Found $(length(new_pts)) routing points via gradient flow.")
     end
 
@@ -309,7 +334,8 @@ function _expand_start_solutions(
         if !isempty(new_pts)
             start_parameters!(H, zeros(ComplexF64, length(rhs0)))
             target_parameters!(H, rhs0)
-            S0_result, interrupted = _solve_homotopy(H, new_pts; catch_interrupt = catch_interrupt)
+            S0_result, interrupted =
+                _solve_homotopy(H, new_pts; catch_interrupt = catch_interrupt)
             S0_new_sols = solutions(S0_result)
             number_of_old_sols = length(S0)
             S0 = HC.unique_points([S0; S0_new_sols])
@@ -331,7 +357,7 @@ end
     _solve_and_trace(MS, H, S0, rhs0, new_pts; monodromy_at_zero, expand_start_solutions)
 
 Perform monodromy solving and trace solutions to ∇r=0.
-Returns (routing_points, result, mon_result).
+Returns a [`RoutingPointsResult`](@ref).
 """
 function _solve_and_trace(
     MS::HomotopyContinuation.MonodromySolver,
@@ -342,32 +368,37 @@ function _solve_and_trace(
     monodromy_at_zero = false,
     expand_start_solutions = true,
     catch_interrupt = true,
-    seed = rand(UInt32),
 )
     ### Monodromy
-    mon_result = monodromy_solve(MS, S0, rhs0, seed; catch_interrupt = catch_interrupt)
+    mon_result =
+        monodromy_solve(MS, S0, rhs0, rand(UInt32); catch_interrupt = catch_interrupt)
+    interrupted = _monodromy_was_interrupted(mon_result)
 
     ### Trace to ∇r=0
     if !monodromy_at_zero
         intermediate_rhs = randn(ComplexF64, length(rhs0))
         start_parameters!(H, rhs0)
         target_parameters!(H, intermediate_rhs)
-        monodromy_solutions = solutions(mon_result)
-        result_intermediate, interrupted = _solve_homotopy(
+        result_intermediate, trace_interrupted = _solve_homotopy(
             H,
-            monodromy_solutions;
+            solutions(mon_result);
             catch_interrupt = catch_interrupt,
         )
-        if interrupted
-            routing_points = expand_start_solutions ? real.(new_pts) : Vector{Float64}[]
-            return routing_points, nothing, mon_result
+        if trace_interrupted
+            routing_points =
+                expand_start_solutions ? real.(new_pts) : Vector{Vector{Float64}}()
+            return RoutingPointsResult(
+                routing_points,
+                nothing,
+                mon_result,
+                :interrupted,
+            )
         end
         start_parameters!(H, intermediate_rhs)
         target_parameters!(H, zeros(ComplexF64, length(rhs0)))
-        intermediate_solutions = solutions(result_intermediate)
-        result, _ = _solve_homotopy(
+        result, trace_interrupted = _solve_homotopy(
             H,
-            intermediate_solutions;
+            solutions(result_intermediate);
             catch_interrupt = catch_interrupt,
         )
         routing_points = real_solutions(result)
@@ -376,9 +407,81 @@ function _solve_and_trace(
         if expand_start_solutions
             routing_points = HC.unique_points([routing_points; real.(new_pts)])
         end
-        return routing_points, result, mon_result
+        code = interrupted || trace_interrupted ? :interrupted : :success
+        return RoutingPointsResult(routing_points, result, mon_result, code)
     else
         routing_points = real_solutions(results(mon_result))
-        return routing_points, mon_result, mon_result
+        code = interrupted ? :interrupted : :success
+        return RoutingPointsResult(routing_points, mon_result, mon_result, code)
     end
+end
+
+
+
+import HomotopyContinuation:
+    solutions, real_solutions, nsolutions, results, nresults
+
+@doc raw"""
+    RoutingPointsResult
+
+Result returned by [`critical_points`](@ref). Use [`routing_points`](@ref) for the
+real routing points, [`result`](@ref) for the final result from tracking to to `∇r = 0`,
+[`monodromy_result`](@ref) for the underlying monodromy computation, and
+[`return_code`](@ref) to distinguish a complete result from an interrupted one.
+"""
+struct RoutingPointsResult{P,T,M}
+    routing_points::P
+    result::T
+    monodromy_result::M
+    return_code::Symbol
+end
+
+RoutingPointsResult(routing_points, result, monodromy_result) =
+    RoutingPointsResult(routing_points, result, monodromy_result, :success)
+
+@doc raw"""
+    routing_points(result::RoutingPointsResult)
+
+Return the real critical points used for routing.
+"""
+routing_points(R::RoutingPointsResult) = R.routing_points
+
+@doc raw"""
+    result(result::RoutingPointsResult)
+
+Return the final HomotopyContinuation result obtained by tracing to ∇r = 0.
+"""
+result(R::RoutingPointsResult) = R.result
+
+@doc raw"""
+    complex_critical_points(result::RoutingPointsResult)
+
+Return the complex critical points of the routing function (the real points are routing points).
+"""
+complex_critical_points(R::RoutingPointsResult) =
+    isnothing(R.result) ? Vector{Vector{ComplexF64}}() : solutions(R.result)
+
+@doc raw"""
+    monodromy_result(result::RoutingPointsResult)
+
+Return the underlying monodromy computation result.
+"""
+monodromy_result(R::RoutingPointsResult) = R.monodromy_result
+
+@doc raw"""
+    return_code(result::RoutingPointsResult)
+
+Return `:success` when critical-point computation completed, or `:interrupted`
+when the result contains only the valid routing points found before an interrupt.
+"""
+return_code(R::RoutingPointsResult) = R.return_code
+
+function Base.show(io::IO, R::RoutingPointsResult)
+    npts = length(routing_points(R))
+    ncomplex = length(complex_critical_points(R))
+    header =
+        "RoutingPointsResult with $npts routing point(s) and $ncomplex complex critical point(s)"
+    println(io, header)
+    println(io, "="^length(header))
+    print(io, "• return_code → :$(return_code(R))")
 end

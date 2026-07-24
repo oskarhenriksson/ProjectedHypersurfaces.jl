@@ -1,4 +1,11 @@
 export partition_of_critical_points
+
+export return_code,
+    regions,
+    morse_indices,
+    failed_info,
+    nregions
+
 ### This is adapted from https://github.com/JuliaAlgebra/HypersurfaceRegions.jl/blob/main/src/partition.jl
 
 
@@ -37,7 +44,7 @@ function _index_list(∇r, crit_pts)
         index, unstable_eigenvectors, flag = index_unstable_eigenvector!(u, U, ∇r, a)
         if flag == true
             flag_prime = true
-            return nothing, nothing, nothing, flag_prime
+            return nothing, nothing, flag_prime
         end
 
         push!(index_list, index)
@@ -50,21 +57,64 @@ end
 
 # input a list, output a list of indices that have the same value in the list
 function partition_indices(lst)
-    partitions = Dict()
+    regions = Dict()
     for (index, element) in enumerate(lst)
-        if haskey(partitions, element)
-            push!(partitions[element], index)
+        if haskey(regions, element)
+            push!(regions[element], index)
         else
-            partitions[element] = [index]
+            regions[element] = [index]
         end
     end
-    return partitions
+    return regions
+end
+
+function _finalize_partition_result(
+    graph,
+    critical_points_indices,
+    index_list,
+    failed_info_list;
+    interrupted = false,
+)
+    partition = LightGraphs.connected_components(graph)
+    partition_critical_point_indices = Vector{Int}[]
+    for component in partition
+        push!(
+            partition_critical_point_indices,
+            @view(critical_points_indices[component]),
+        )
+    end
+
+    code =
+        interrupted ? :interrupted :
+        isempty(failed_info_list) ? :success : :partial_success
+    return PartitionResult(
+        partition_critical_point_indices,
+        index_list,
+        failed_info_list,
+        code,
+    )
 end
 
 
+@doc raw"""
+    partition_of_critical_points(
+    r::RoutingFunction,
+    crit_pts::AbstractVector{<:AbstractVector{<:Real}},
+    epsilon::Float64 = 1e-6,
+    reltol::Float64 = 1e-6,
+    abstol::Float64 = 1e-9,
+)
+
+Partition a collection `crit_pts` of critical points of a routing function `r` into connected components via gradient flow.
+The function returns a [`PartitionResult`](@ref) containing the connected components,
+Morse indices, and any failed connection attempts.
+
+If `catch_interrupt = true`, an interrupt returns the provisional connected
+components found so far with [`return_code`](@ref) equal to `:interrupted`.
+"""
 function partition_of_critical_points(
     r::RoutingFunction,
-    crit_pts::Vector{Vector{Float64}},
+    crit_pts::AbstractVector{<:AbstractVector{<:Real}},
     epsilon::Float64 = 1e-6,
     reltol::Float64 = 1e-6,
     abstol::Float64 = 1e-9;
@@ -76,7 +126,7 @@ function partition_of_critical_points(
     index_list, unstable_eigenvector_list, flag_prime = _index_list(∇r, crit_pts)
     if flag_prime == true
         @warn "The Hessian is almost singular for some critical points"
-        return nothing
+        return PartitionResult(Vector{Vector{Int}}(), nothing, [], :singular_hessian)
     end
 
 
@@ -91,12 +141,11 @@ function partition_of_critical_points(
 
     if count_index_0 == 1
         # we do not need to do any path tracking in this case
-        return [critical_points_indices], [], []
+        return PartitionResult([critical_points_indices], index_list, [], :success)
     end
 
-
     failed_info_list = []
-    try
+    interrupted = _run_interruptible(; catch_interrupt = catch_interrupt) do
         ProgressMeter.@showprogress for i = 1:length(index_list)
             if connectivity_status[i] == 0 && index_list[i] == 1
                 # need to do path tracking in two directions
@@ -168,7 +217,7 @@ function partition_of_critical_points(
                     else
                         push!(
                             sub_failed_info_list,
-                            [critical_point_index, epsilon, v, failed_info],
+                            [critical_point_index, -epsilon, v, failed_info],
                         )
                     end
 
@@ -200,16 +249,101 @@ function partition_of_critical_points(
                 end
             end
         end
-    catch e
-        catch_interrupt && _is_interrupt_exception(e) || rethrow(e)
+    end
+
+    if interrupted
         @warn "Interrupted while connecting critical points. Returning the partial partition."
     end
 
+    return _finalize_partition_result(
+        graph,
+        critical_points_indices,
+        index_list,
+        failed_info_list;
+        interrupted = interrupted,
+    )
+end
 
-    partition = LightGraphs.connected_components(graph)
-    partition_critical_point_indices = Vector{Int}[]
-    for par in partition
-        push!(partition_critical_point_indices, @view(critical_points_indices[par]))
+function partition_of_critical_points(
+    r::RoutingFunction,
+    routing_result::RoutingPointsResult,
+    args...;
+    kwargs...,
+)
+    partition_result =
+        partition_of_critical_points(r, routing_points(routing_result), args...; kwargs...)
+    if return_code(routing_result) == :interrupted &&
+       return_code(partition_result) != :singular_hessian
+        return PartitionResult(
+            regions(partition_result),
+            morse_indices(partition_result),
+            failed_info(partition_result),
+            :interrupted,
+        )
     end
-    return partition_critical_point_indices, index_list, failed_info_list
+    return partition_result
+end
+
+
+@doc raw"""
+    PartitionResult
+
+Result returned by [`partition_of_critical_points`](@ref). Use
+[`regions`](@ref) for connected components, [`morse_indices`](@ref) for the
+critical point indices, and [`failed_info`](@ref) for failed connection attempts.
+When [`return_code`](@ref) is `:interrupted`, the regions are provisional and
+may merge after the remaining paths are tracked.
+"""
+struct PartitionResult{P,I,F}
+    regions::P
+    morse_indices::I # TODO: this is a strange output to expose to users, since it is indexing yet another list you must reference. Considering changing this to a Dict or something.
+    failed_info::F
+    return_code::Symbol
+end
+
+"""
+    regions(result::PartitionResult)
+
+Return the connected components as vectors of routing point indices.
+"""
+regions(R::PartitionResult) = R.regions
+
+@doc raw"""
+    morse_indices(result::PartitionResult)
+
+Return the Morse index computed for each routing point, or `nothing` if the
+partition failed before indices were available.
+"""
+morse_indices(R::PartitionResult) = R.morse_indices
+
+@doc raw"""
+    failed_info(result::PartitionResult)
+
+Return information collected from failed connection attempts.
+"""
+failed_info(R::PartitionResult) = R.failed_info
+
+@doc raw"""
+    return_code(result::PartitionResult)
+
+Return a symbolic status code for a partition result.
+"""
+return_code(R::PartitionResult) = R.return_code
+
+@doc raw"""
+    nregions(result::PartitionResult)
+
+Return the number of connected components in the partition result.
+"""
+nregions(R::PartitionResult) = length(regions(R))
+
+function Base.show(io::IO, R::PartitionResult)
+    npars = nregions(R)
+    nfailures = length(failed_info(R))
+    header = "PartitionResult with $npars connected components"
+    println(io, header)
+    println(io, "="^length(header))
+    println(io, "• return_code → :$(return_code(R))")
+    println(io, "• $(nfailures) failed path(s)")
+    print(io, "• morse_indices → ", isnothing(morse_indices(R)) ? "not computed" : length(morse_indices(R)))
 end

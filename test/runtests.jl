@@ -1,5 +1,28 @@
-using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
+using Test, Random, ProjectedHypersurfaces, LinearAlgebra, Logging
+
+@testset "Interrupt handling" begin
+    @test ProjectedHypersurfaces._is_interrupt_exception(InterruptException())
+    @test ProjectedHypersurfaces._run_interruptible(
+        () -> throw(InterruptException());
+        catch_interrupt = true,
+    )
+    @test !ProjectedHypersurfaces._run_interruptible(
+        () -> nothing;
+        catch_interrupt = true,
+    )
+    @test_throws InterruptException ProjectedHypersurfaces._run_interruptible(
+        () -> throw(InterruptException());
+        catch_interrupt = false,
+    )
+    @test_throws ErrorException ProjectedHypersurfaces._run_interruptible(
+        () -> error("not an interrupt");
+        catch_interrupt = true,
+    )
+end
+
 @testset "Quadratic discriminant" begin
+
+    Random.seed!(12345)
     
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -26,8 +49,8 @@ using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
     u1 = evaluate(r_test, [a;b] => p)
     U1 = evaluate(H_test, [a;b] => p)
     u2, u22, U2 = randn(ComplexF64, k), randn(ComplexF64, k), randn(ComplexF64, k, k);
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u2, U2, ∇r, p);
-    ProjectedHypersurfaceRegions.evaluate!(u22, ∇r, p);
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u2, U2, ∇r, p);
+    ProjectedHypersurfaces.evaluate!(u22, ∇r, p);
 
     @test norm(u1 - u2) < 1e-12
     @test norm(u1 - u22) < 1e-12
@@ -35,6 +58,8 @@ using Test, Random, ProjectedHypersurfaceRegions, LinearAlgebra, Logging
 end
 
 @testset "Cubic discriminant" begin
+
+    Random.seed!(12345)
     
     @var a b x
     F = System([x^3 + a * x^2 + b * x + 1; 3 * x^2 + 2 * a * x + b], variables=[a, b, x])
@@ -53,41 +78,51 @@ end
     r_symbolic = h_symbolic/((a - c[1])^2 + (b - c[2])^2 + 1)^3
     ∇r_symbolic = System(differentiate(log(r_symbolic), [a, b]), variables=[a, b]) |> fixed
 
+    # Test sample
+    sample = sample_points(h, 6)
+    @test all(contains.(Ref(h), sample))
+    @test all([abs(evaluate(h_symbolic, [a,b]=>pt)) < 1e-9 for pt in sample])
+
+    # Test interpolation
+    IR = interpolate(h)
+    @test polynomial(IR) == h_symbolic
+
     # Test evaluation and Jacobian
     p0 = randn(ComplexF64, 2)
     u = zeros(ComplexF64, 2)
     U = zeros(ComplexF64, 2, 2)
     u2 = zeros(ComplexF64, 2)
     U2 = zeros(ComplexF64, 2, 2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, ∇r, p0)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
     @test norm(u-u2) < 1e-12
     @test norm(U-U2) < 1e-12
     @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
 
     # Check realness
     p0 = randn(2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, ∇r, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
     @test norm(imag(u)) < 1e-12
     @test norm(imag(U)) < 1e-12
 
     # Test forming the routing point homotopies
     p1 = zeros(2)
     q1 = randn(2)
-    H = ProjectedHypersurfaceRegions.RoutingPointsHomotopy(∇r, p1, q1)
+    H = ProjectedHypersurfaces.RoutingPointsHomotopy(∇r, p1, q1)
     u = randn(ComplexF64, 2)
     U = randn(ComplexF64, 2, 2)
     x0 = randn(ComplexF64, 2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, H, x0, 1.0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, H, x0, 1.0)
     @test norm(∇r_symbolic(x0) - u) < 1e-12
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, H, x0, 0.0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, H, x0, 0.0)
     @test norm(∇r_symbolic(x0)-q1 - u) < 1e-12
 
 
     # Test that the expansion of start solutions works
     ∇r = RoutingGradient(r)
-    MS, H, S0_initial, rhs0, k = ProjectedHypersurfaceRegions._setup_monodromy_solver(∇r)
-    S0_skip, new_pts_skip = ProjectedHypersurfaceRegions._expand_start_solutions(
+    MS, H, S0_initial, rhs0, k = ProjectedHypersurfaces._setup_monodromy_solver(∇r)
+
+    S0_skip, new_pts_skip = ProjectedHypersurfaces._expand_start_solutions(
         ∇r, H, S0_initial, rhs0, k;
         start_grid_width = 10,
         start_grid_stepsize = 1,
@@ -96,25 +131,28 @@ end
     @test S0_skip == S0_initial
     @test isempty(new_pts_skip)
 
-    S0_no_gradient, new_pts_no_gradient = ProjectedHypersurfaceRegions._expand_start_solutions(
-        ∇r, H, S0_initial, rhs0, k;
-        start_grid_width = 1,
-        start_grid_stepsize = 1,
-        expand_start_solutions_gradient_flow = false,
-    )
-    @test all(norm(∇r(z)-rhs0) < 1e-10 for z in S0_no_gradient)
+    S0_no_gradient, new_pts_no_gradient =
+        ProjectedHypersurfaces._expand_start_solutions(
+            ∇r, H, S0_initial, rhs0, k;
+            start_grid_width = 1,
+            start_grid_stepsize = 1,
+            expand_start_solutions_gradient_flow = false,
+        )
+    @test all(norm(∇r(z) - rhs0) < 1e-10 for z in S0_no_gradient)
     @test isempty(new_pts_no_gradient)
 
-    S0_no_newton, new_pts_no_newton = ProjectedHypersurfaceRegions._expand_start_solutions(
-        ∇r, H, S0_initial, rhs0, k;
-        start_grid_width = 1,
-        start_grid_stepsize = 1,
-        expand_start_solutions_newton = false,
+    S0_no_newton, new_pts_no_newton =
+        ProjectedHypersurfaces._expand_start_solutions(
+            ∇r, H, S0_initial, rhs0, k;
+            start_grid_width = 1,
+            start_grid_stepsize = 1,
+            expand_start_solutions_newton = false,
     )
-    @test all(norm(∇r(z)-rhs0) < 1e-10 for z in S0_no_newton)
-    @test all(norm(∇r(z)) < 1e-6 for z in new_pts_no_newton)
+    @test all(norm(∇r(z) - rhs0) < 1e-10 for z in S0_no_newton)
+    @test !isempty(new_pts_no_newton)
+    @test all(norm(∇r(z)) < 1e-10 for z in new_pts_no_newton)
 
-    S0, new_pts = ProjectedHypersurfaceRegions._expand_start_solutions(
+    S0, new_pts = ProjectedHypersurfaces._expand_start_solutions(
         ∇r, H, S0_initial, rhs0, k;
         start_grid_width = 10,
         start_grid_stepsize = 1,
@@ -125,11 +163,15 @@ end
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    pts, res0, mon_res = critical_points(r, expand_start_solutions=false, options=options)
-    @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+    routing_result = critical_points(r, start_grid_width=0, options=options)
+    @test routing_result isa RoutingPointsResult
+    @test return_code(routing_result) == :success
+    @test !applicable(iterate, routing_result)
+    @test all(norm(evaluate(∇r, z, zeros(ComplexF64, size(∇r, 1)))) < 1e-12 for z in routing_points(routing_result))
+    @test all(norm.(∇r_symbolic.(complex_critical_points(routing_result))) .< 1e-12)
 
     empty_start_solutions = Vector{Vector{ComplexF64}}()
-    empty_routing_points, empty_result, empty_mon_res = ProjectedHypersurfaceRegions._solve_and_trace(
+    empty_routing_result = ProjectedHypersurfaces._solve_and_trace(
         MS,
         H,
         empty_start_solutions,
@@ -137,27 +179,29 @@ end
         Vector{Vector{ComplexF64}}();
         expand_start_solutions = false,
     )
-    @test isempty(empty_routing_points)
-    @test !isnothing(empty_result)
-    @test isempty(solutions(empty_result))
+    @test isempty(routing_points(empty_routing_result))
+    @test !isnothing(result(empty_routing_result))
+    @test isempty(solutions(result(empty_routing_result)))
+    @test return_code(empty_routing_result) == :success
 
-    pl = generate_plot(
-        r,
-        [[0.0, 0.0]],
-        [[1]],
-        [0];
-        h = (a, b) -> a^2 - 4 * b,
-        root_counting_system = System([x^2 + a * x + b], variables = [x], parameters = [a; b]),
-        annotate_root_counts = true,
-        contour_stepsize = 0.5,
-        xlims = (-1.0, 1.0),
-        ylims = (-1.0, 1.0),
-    )
-    @test !isnothing(pl)
+    compatible_result = RoutingPointsResult(Vector{Vector{Float64}}(), nothing, nothing)
+    @test return_code(compatible_result) == :success
+    @test isempty(complex_critical_points(compatible_result))
+
+    interrupted_result =
+        RoutingPointsResult(Vector{Vector{Float64}}(), nothing, nothing, :interrupted)
+    @test return_code(interrupted_result) == :interrupted
+    @test isempty(complex_critical_points(interrupted_result))
+    @test occursin("return_code → :interrupted", sprint(show, interrupted_result))
+
+    # Test that trying to fix a seed via keyword (deprecated) gives an error
+    @test_throws MethodError critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
 
 end;
 
 @testset "Quadratic discriminant with lines" begin
+
+    Random.seed!(12345)
     
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -182,21 +226,23 @@ end;
     U = zeros(ComplexF64, 2, 2)
     u2 = zeros(ComplexF64, 2)
     U2 = zeros(ComplexF64, 2, 2)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u, U, ∇r, p0)
-    ProjectedHypersurfaceRegions.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
+    ProjectedHypersurfaces.evaluate_and_jacobian!(u2, U2, ∇r_symbolic, p0)
     @test norm(u-u2) < 1e-12
     @test norm(U-U2) < 1e-12
     @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    pts, res0, mon_res = critical_points(r, start_grid_width=0, options=options)   
-    @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+    routing_result = critical_points(r, start_grid_width=0, options=options)
+    @test all(norm.(∇r_symbolic.(solutions(result(routing_result)))) .< 1e-12)
 
 end;
 
 
 @testset "Two discriminants" begin
+
+    Random.seed!(12345)
     
     @var a b x z
     F1 = System([x^3 + a * x^2 + b * x + 1; 3 * x^2 + 2 * a * x + b], variables=[a, b, x])
@@ -219,12 +265,14 @@ end;
 
     # Check critical points
     options = MonodromyOptions(target_solutions_count = 2)
-    pts, res0, mon_res = critical_points(r, start_grid_width=0, options=options)   
-    @test all(norm.(∇r_symbolic.(solutions(res0))) .< 1e-12)
+    routing_result = critical_points(r, start_grid_width=0, options=options)
+    @test all(norm.(∇r_symbolic.(solutions(result(routing_result)))) .< 1e-12)
 
 end
 
 @testset "Kuramoto discriminant" begin
+
+    Random.seed!(12345)
     
     @var s[1:2] c[1:2] w[1:2]
     freq1 = (s[1] * c[2] - c[1] * s[2]) + (s[1] * 1 - c[1] * 0) - 3 * w[1]
@@ -260,12 +308,14 @@ end
     ∇r_symbolic = System(differentiate(log(r_symbolic), [w[1], w[2]]), variables=[w[1], w[2]]) |> fixed
 
     p0 = randn(ComplexF64, 2)
-    @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-10
+    @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
 
 end;
 
 @testset "Connect points" begin
     
+    Random.seed!(12345)
+
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b]);
@@ -283,16 +333,45 @@ end;
 
     @test all(norm.(∇r.(pts)) .< 1e-12) 
 
-    G, idx, failed_info = partition_of_critical_points(r, pts)
+    partition_result = partition_of_critical_points(r, pts)
+    partition_result_from_routing_result =
+        partition_of_critical_points(r, RoutingPointsResult(pts, nothing, nothing))
+    partition_result_from_interrupted_routing_result = partition_of_critical_points(
+        r,
+        RoutingPointsResult(pts, nothing, nothing, :interrupted),
+    )
 
-    @test sort(G) == [[1, 2, 4], [3]]
-    @test idx == [1, 0, 0, 0]
-    @test isempty(failed_info)
+    @test partition_result isa PartitionResult
+    @test sort(regions(partition_result)) == [[1, 2, 4], [3]]
+    @test morse_indices(partition_result) == [1, 0, 0, 0]
+    @test isempty(failed_info(partition_result))
+    @test return_code(partition_result) == :success
+    @test regions(partition_result_from_routing_result) == regions(partition_result)
+    @test regions(partition_result_from_interrupted_routing_result) ==
+          regions(partition_result)
+    @test return_code(partition_result_from_interrupted_routing_result) == :interrupted
+    @test !applicable(iterate, partition_result)
+    partition_display = sprint(show, partition_result)
+    @test !isempty(partition_display)
+    @test occursin("return_code → :success", partition_display)
+    @test !occursin("::success", partition_display)
+
+    partial_graph = ProjectedHypersurfaces.LightGraphs.SimpleGraph(3)
+    ProjectedHypersurfaces.LightGraphs.add_edge!(partial_graph, 1, 2)
+    interrupted_partition = ProjectedHypersurfaces._finalize_partition_result(
+        partial_graph,
+        [1, 2, 3],
+        [1, 0, 0],
+        [];
+        interrupted = true,
+    )
+    @test sort(regions(interrupted_partition)) == [[1, 2], [3]]
+    @test return_code(interrupted_partition) == :interrupted
 
 end;
 
-@testset "Projected hypersurface membership" begin
-    Random.seed!(1234)
+@testset "Projected hypersurface sampling and membership" begin
+    Random.seed!(12345)
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b])
@@ -300,10 +379,13 @@ end;
     @test contains(h, [2.0, 1.0])
     @test !contains(h, [3.0, 1.0])
     @test_throws ArgumentError contains(h, [2.0])
+
+    sample = sample_points(h, 6)
+    @test all(contains.(Ref(h), sample))
 end
-
-
 @testset "Hypersurface evaluations for quadratic" begin
+
+    Random.seed!(12345)
 
     # Set up the system
     @var a b x
@@ -332,11 +414,13 @@ end
     pt = [11, 7]
     Hess_log_abs_h = p -> [[2/(p[1]^2 - 4*p[2]) - 4*p[1]^2/(p[1]^2 - 4*p[2])^2 8*p[1]/(p[1]^2 - 4*p[2])^2]; 
     [8*p[1]/(p[1]^2 - 4*p[2])^2  -16/(p[1]^2 - 4*p[2])^2]]
-    @test Hess_log_abs_h(pt) - ProjectedHypersurfaceRegions.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
+    @test Hess_log_abs_h(pt) - ProjectedHypersurfaces.gradient_and_hessian(h, pt)[2] |> norm < 1e-6
 
 end
-
 @testset "Noninjective projection" begin
+
+    Random.seed!(12345)
+
     @var x y z
     F = System([z-x^2, y], variables = [x,y, z])
     h = ProjectedHypersurface(F, [y, z])
@@ -349,27 +433,39 @@ end
 end
 
 @testset "Two components projecting to the same hypersurface" begin
+
+    Random.seed!(12345)
+
     @var a, b, x
     F = System([a^2 - 4*b, (x - a + 1) * (x - a)], variables=[a, b, x])
     # V(F) has two irreducible components that project down to V(a^2-4b)
     h = ProjectedHypersurface(F, [a, b])
     @test degree(h) == 2
+
+    # Check that the decomposition function only gives a single downstairs component
+    components = decompose(h)
+    @test length(components) == 1
+
 end
 
 @testset "Empty PWS" begin
-    Random.seed!(1234)
+    
+    Random.seed!(12345)
     @var a b x
     F = System([(x - a) * (x - b); 2 * x - (a + b)], variables=[a, b, x])
     @test_throws "No witness points found." PseudoWitnessSet(F, 2)
 end
 
 @testset "Multiplicity detection" begin
+    Random.seed!(12345)
     @var a, b, x
     F = System([a^2 - 4*b, (x - a + 1)^2 * (x - a)], variables=[a, b, x])
     @test_logs (:warn, "Irreducible component of higher multiplicity detected in the incidence variety.") match_mode=:any PseudoWitnessSet(F,2)
 end
 
 @testset "Trace test" begin
+
+    Random.seed!(12345)
 
     @var a b x
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
@@ -381,6 +477,7 @@ end
     PWS_messed_up = PseudoWitnessSet(PWS.F,
         PWS.k,
         PWS.L,
+        PWS.generic_witness_set,
         PWS.W[[1]],
         PWS.πW[[1]],
         PWS.tZ[[1]],

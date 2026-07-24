@@ -1,5 +1,20 @@
-export ProjectedHypersurface, evaluate, gradient, hessian, degree, trace_test
+export ProjectedHypersurface, 
+evaluate,
+gradient,
+hessian,
+degree,
+trace_test,
+sample_points,
+decompose
 
+@doc raw"""
+    ProjectedHypersurface{TC} <: HC.AbstractSystem
+
+
+A hypersurface $\mathcal{H}$ in $\mathbb{C}^k$ that arises through projection of $(k-1)$-dimensional variety in a higher-dimensional ambient space.
+
+The hypersurface $\mathcal{H}$ is represented by a pseudowitness set.
+"""
 struct ProjectedHypersurface{TC} <: HC.AbstractSystem
     PWS::PseudoWitnessSet
     projection_vars::Vector{HC.Variable}
@@ -28,7 +43,7 @@ end
 degree(h::ProjectedHypersurface) = degree(h.PWS)
 
 
-"""
+@doc raw"""
     trace_test(h::ProjectedHypersurface)
 
 Performs a trace test to vertify completeness of the underlying pseduo-witness set and therefore correctness of the degree.
@@ -39,10 +54,34 @@ See [`trace_test(::PseudoWitnessSet)`](@ref) for details.
 """
 trace_test(h::ProjectedHypersurface) = trace_test(h.PWS)
 
+@doc raw"""
+    sample_points(h::ProjectedHypersurface, N::Int)
+
+Generate a sample of `N` points from a projected hypersurface `h`. See also [`sample_points(::PseudoWitnessSet,::Int)`](@ref)
+"""
+sample_points(h::ProjectedHypersurface, N::Int) = sample_points(h.PWS, N::Int)
+
 Base.show(io::IO, h::ProjectedHypersurface) = println(io, "Projected hypersurface of degree $(degree(h)) in ambient dimension $(nvariables(h))")
     
 ModelKit.variables(h::ProjectedHypersurface{TC}) where {TC} = h.projection_vars
 ModelKit.nvariables(h::ProjectedHypersurface{TC}) where {TC} = length(h.projection_vars)
+
+@doc raw"""
+    decompose(h::ProjectedHypersurface)
+
+Decomposes the projected hypersurface `h` into its irreducible components. 
+Returns a vector of [`ProjectedHypersurface`](@ref) objects, one for each component.
+
+See [`decompose(::PseudoWitnessSet)`](@ref) for details.
+
+"""
+function decompose(h::ProjectedHypersurface)
+    PWS_components = decompose(h.PWS)
+    map(PWS_components) do PWS_comp
+        ProjectedHypersurface(PWS_comp.F, h.projection_vars; PWS = PWS_comp)
+    end
+end
+
 
 function Base.contains(
     h::ProjectedHypersurface,

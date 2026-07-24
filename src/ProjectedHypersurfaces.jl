@@ -1,4 +1,4 @@
-module ProjectedHypersurfaceRegions
+module ProjectedHypersurfaces
 using HomotopyContinuation, LinearAlgebra, OrdinaryDiffEq, SciMLBase, LightGraphs, ProgressMeter
 
 const HC = HomotopyContinuation
@@ -11,6 +11,7 @@ import HomotopyContinuation.taylor!
 import HomotopyContinuation.ModelKit.evaluate
 import HomotopyContinuation.ModelKit.nvariables
 import HomotopyContinuation.ModelKit.variables
+import HomotopyContinuation.ModelKit.parameters
 
 using Reexport: @reexport
 @reexport using HomotopyContinuation
@@ -19,6 +20,7 @@ include("restriction_to_line_system.jl")
 include("pseudo_witness_sets.jl")
 include("gradient_cache.jl")
 include("hypersurfaces.jl")
+include("interpolation.jl")
 include("routing_functions.jl")
 include("homotopy.jl")
 include("critical_points.jl")
