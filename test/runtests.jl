@@ -273,6 +273,90 @@ end;
 
 end;
 
+@testset "Region struct and membership" begin
+
+    Random.seed!(12345)
+
+    @var a b x
+    F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
+    h = ProjectedHypersurface(F, [a, b])
+
+    c = [13, 2]
+    r = RoutingFunction(h; c=c)
+
+    # Direct construction computes the Euler characteristic χ = ∑ᵢ (-1)^μᵢ
+    C0 = Region([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [0, 1, 2], r, 7)
+    @test C0 isa Region
+    @test critical_points(C0) isa Vector{Vector{Float64}}
+    @test morse_indices(C0) == [0, 1, 2]
+    @test euler_characteristic(C0) == 1
+    @test number(C0) == 7
+    # There must be one Morse index per critical point
+    @test_throws AssertionError Region([[1.0, 2.0]], [0, 1], r, 1)
+
+    # Same fixed routing points as in "Connect points" (deterministic partition)
+    pts = [
+        [-3.9180890683992278, -6.635887940807433],
+        [13.040296300414134, 1.993819726256856],
+        [3.2168112092392103, 8.082538361382138],
+        [-12.339018441254076, -2.1071368134982302]
+    ]
+
+    partition_result = partition_of_critical_points(r, pts)
+
+    # Build the Region objects from the partition
+    Rs = regions(partition_result, r, pts)
+    @test Rs isa Vector{Region}
+    @test length(Rs) == length(regions(partition_result))
+    @test number.(Rs) == collect(1:length(Rs))
+
+    # Every routing point lands in exactly one region
+    @test sum(length(critical_points(C)) for C in Rs) == length(pts)
+
+    # Each region carries the data of its connected component
+    idx = morse_indices(partition_result)
+    for (C, component) in zip(Rs, regions(partition_result))
+        @test critical_points(C) == [pts[j] for j in component]
+        @test morse_indices(C) == [idx[j] for j in component]
+        @test euler_characteristic(C) == sum(mu -> (-1)^mu, morse_indices(C); init=0)
+    end
+
+    # show prints something nonempty
+    @test occursin("Region", sprint(show, first(Rs)))
+
+    # membership: each index-0 critical point flows back to its own region
+    for C in Rs
+        for (cp, mu) in zip(critical_points(C), morse_indices(C))
+            mu == 0 || continue
+            M = membership(Rs, cp)
+            @test M isa Region
+            @test number(M) == number(C)
+        end
+    end
+
+    # membership of a non-critical point: the hypersurface here is the
+    # discriminant a^2 - 4b = 0 of the quadratic x^2 + a*x + b, so the complement
+    # has two regions, a^2 - 4b > 0 and a^2 - 4b < 0. The point pts[3] lies in the
+    # latter, all other routing points in the former.
+    @test pts[3][1]^2 - 4 * pts[3][2] < 0
+    @test all(p[1]^2 - 4 * p[2] > 0 for p in pts[[1, 2, 4]])
+    inside = only(C for C in Rs if pts[3] in critical_points(C))
+    outside = only(C for C in Rs if pts[2] in critical_points(C))
+
+    # (a, b) = (0, 5): a^2 - 4b = -20 < 0, so the same region as pts[3]
+    M_in = membership(Rs, [0.0, 5.0])
+    @test M_in isa Region
+    @test number(M_in) == number(inside)
+    # (a, b) = (0, -5): a^2 - 4b = 20 > 0, so the same region as pts[1], pts[2], pts[4]
+    M_out = membership(Rs, [0.0,-5.0])
+    @test M_out isa Region
+    @test number(M_out) == number(outside)
+
+    # membership on an empty vector of regions returns nothing
+    @test membership(Region[], [0.0, 0.0]) === nothing
+
+end;
+
 @testset "Projected hypersurface sampling and membership" begin
     Random.seed!(12345)
     @var a b x

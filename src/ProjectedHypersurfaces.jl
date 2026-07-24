@@ -26,6 +26,7 @@ include("homotopy.jl")
 include("critical_points.jl")
 include("ode_solving.jl")
 include("graph.jl")
+include("membership.jl")
 include("plotting.jl")
 
 
