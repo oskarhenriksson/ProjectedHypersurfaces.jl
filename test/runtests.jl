@@ -1,4 +1,25 @@
 using Test, Random, ProjectedHypersurfaces, LinearAlgebra, Logging
+
+@testset "Interrupt handling" begin
+    @test ProjectedHypersurfaces._is_interrupt_exception(InterruptException())
+    @test ProjectedHypersurfaces._run_interruptible(
+        () -> throw(InterruptException());
+        catch_interrupt = true,
+    )
+    @test !ProjectedHypersurfaces._run_interruptible(
+        () -> nothing;
+        catch_interrupt = true,
+    )
+    @test_throws InterruptException ProjectedHypersurfaces._run_interruptible(
+        () -> throw(InterruptException());
+        catch_interrupt = false,
+    )
+    @test_throws ErrorException ProjectedHypersurfaces._run_interruptible(
+        () -> error("not an interrupt");
+        catch_interrupt = true,
+    )
+end
+
 @testset "Quadratic discriminant" begin
 
     Random.seed!(12345)
@@ -99,9 +120,40 @@ end
 
     # Test that the expansion of start solutions works
     ∇r = RoutingGradient(r)
-    MS, H, S0, rhs0, k = ProjectedHypersurfaces._setup_monodromy_solver(∇r)
+    MS, H, S0_initial, rhs0, k = ProjectedHypersurfaces._setup_monodromy_solver(∇r)
+
+    S0_skip, new_pts_skip = ProjectedHypersurfaces._expand_start_solutions(
+        ∇r, H, S0_initial, rhs0, k;
+        start_grid_width = 10,
+        start_grid_stepsize = 1,
+        expand_start_solutions = false,
+    )
+    @test S0_skip == S0_initial
+    @test isempty(new_pts_skip)
+
+    S0_no_gradient, new_pts_no_gradient =
+        ProjectedHypersurfaces._expand_start_solutions(
+            ∇r, H, S0_initial, rhs0, k;
+            start_grid_width = 1,
+            start_grid_stepsize = 1,
+            expand_start_solutions_gradient_flow = false,
+        )
+    @test all(norm(∇r(z) - rhs0) < 1e-10 for z in S0_no_gradient)
+    @test isempty(new_pts_no_gradient)
+
+    S0_no_newton, new_pts_no_newton =
+        ProjectedHypersurfaces._expand_start_solutions(
+            ∇r, H, S0_initial, rhs0, k;
+            start_grid_width = 1,
+            start_grid_stepsize = 1,
+            expand_start_solutions_newton = false,
+    )
+    @test all(norm(∇r(z) - rhs0) < 1e-10 for z in S0_no_newton)
+    @test !isempty(new_pts_no_newton)
+    @test all(norm(∇r(z)) < 1e-10 for z in new_pts_no_newton)
+
     S0, new_pts = ProjectedHypersurfaces._expand_start_solutions(
-        ∇r, H, S0, rhs0, k;
+        ∇r, H, S0_initial, rhs0, k;
         start_grid_width = 10,
         start_grid_stepsize = 1,
     )
@@ -113,8 +165,34 @@ end
     options = MonodromyOptions(target_solutions_count = 2)
     routing_result = critical_points(r, start_grid_width=0, options=options)
     @test routing_result isa RoutingPointsResult
+    @test return_code(routing_result) == :success
+    @test !applicable(iterate, routing_result)
     @test all(norm(evaluate(∇r, z, zeros(ComplexF64, size(∇r, 1)))) < 1e-12 for z in routing_points(routing_result))
     @test all(norm.(∇r_symbolic.(complex_critical_points(routing_result))) .< 1e-12)
+
+    empty_start_solutions = Vector{Vector{ComplexF64}}()
+    empty_routing_result = ProjectedHypersurfaces._solve_and_trace(
+        MS,
+        H,
+        empty_start_solutions,
+        rhs0,
+        Vector{Vector{ComplexF64}}();
+        expand_start_solutions = false,
+    )
+    @test isempty(routing_points(empty_routing_result))
+    @test !isnothing(result(empty_routing_result))
+    @test isempty(solutions(result(empty_routing_result)))
+    @test return_code(empty_routing_result) == :success
+
+    compatible_result = RoutingPointsResult(Vector{Vector{Float64}}(), nothing, nothing)
+    @test return_code(compatible_result) == :success
+    @test isempty(complex_critical_points(compatible_result))
+
+    interrupted_result =
+        RoutingPointsResult(Vector{Vector{Float64}}(), nothing, nothing, :interrupted)
+    @test return_code(interrupted_result) == :interrupted
+    @test isempty(complex_critical_points(interrupted_result))
+    @test occursin("return_code → :interrupted", sprint(show, interrupted_result))
 
     # Test that trying to fix a seed via keyword (deprecated) gives an error
     @test_throws MethodError critical_points(r, start_grid_width=0, options=options, seed=0x12345678)
@@ -258,6 +336,10 @@ end;
     partition_result = partition_of_critical_points(r, pts)
     partition_result_from_routing_result =
         partition_of_critical_points(r, RoutingPointsResult(pts, nothing, nothing))
+    partition_result_from_interrupted_routing_result = partition_of_critical_points(
+        r,
+        RoutingPointsResult(pts, nothing, nothing, :interrupted),
+    )
 
     @test partition_result isa PartitionResult
     @test sort(regions(partition_result)) == [[1, 2, 4], [3]]
@@ -265,11 +347,26 @@ end;
     @test isempty(failed_info(partition_result))
     @test return_code(partition_result) == :success
     @test regions(partition_result_from_routing_result) == regions(partition_result)
+    @test regions(partition_result_from_interrupted_routing_result) ==
+          regions(partition_result)
+    @test return_code(partition_result_from_interrupted_routing_result) == :interrupted
     @test !applicable(iterate, partition_result)
     partition_display = sprint(show, partition_result)
     @test !isempty(partition_display)
     @test occursin("return_code → :success", partition_display)
     @test !occursin("::success", partition_display)
+
+    partial_graph = ProjectedHypersurfaces.LightGraphs.SimpleGraph(3)
+    ProjectedHypersurfaces.LightGraphs.add_edge!(partial_graph, 1, 2)
+    interrupted_partition = ProjectedHypersurfaces._finalize_partition_result(
+        partial_graph,
+        [1, 2, 3],
+        [1, 0, 0],
+        [];
+        interrupted = true,
+    )
+    @test sort(regions(interrupted_partition)) == [[1, 2], [3]]
+    @test return_code(interrupted_partition) == :interrupted
 
 end;
 

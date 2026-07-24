@@ -68,6 +68,33 @@ function partition_indices(lst)
     return regions
 end
 
+function _finalize_partition_result(
+    graph,
+    critical_points_indices,
+    index_list,
+    failed_info_list;
+    interrupted = false,
+)
+    partition = LightGraphs.connected_components(graph)
+    partition_critical_point_indices = Vector{Int}[]
+    for component in partition
+        push!(
+            partition_critical_point_indices,
+            @view(critical_points_indices[component]),
+        )
+    end
+
+    code =
+        interrupted ? :interrupted :
+        isempty(failed_info_list) ? :success : :partial_success
+    return PartitionResult(
+        partition_critical_point_indices,
+        index_list,
+        failed_info_list,
+        code,
+    )
+end
+
 
 @doc raw"""
     partition_of_critical_points(
@@ -79,14 +106,19 @@ end
 )
 
 Partition a collection `crit_pts` of critical points of a routing function `r` into connected components via gradient flow.
-The function returns a [`PartitionResult`](@ref) containing the connected components, Morse indices, and any failed connection attempts.  
+The function returns a [`PartitionResult`](@ref) containing the connected components,
+Morse indices, and any failed connection attempts.
+
+If `catch_interrupt = true`, an interrupt returns the provisional connected
+components found so far with [`return_code`](@ref) equal to `:interrupted`.
 """
 function partition_of_critical_points(
     r::RoutingFunction,
     crit_pts::AbstractVector{<:AbstractVector{<:Real}},
     epsilon::Float64 = 1e-6,
     reltol::Float64 = 1e-6,
-    abstol::Float64 = 1e-9,
+    abstol::Float64 = 1e-9;
+    catch_interrupt = true,
 )
 
     ∇r = RoutingGradient(r)
@@ -113,126 +145,144 @@ function partition_of_critical_points(
     end
 
     failed_info_list = []
-    ProgressMeter.@showprogress for i = 1:length(index_list)
-        if connectivity_status[i] == 0 && index_list[i] == 1
-            # need to do path tracking in two directions
-            critical_point_index = critical_points_indices[i]
-            unstable_eigenvector = unstable_eigenvector_list[critical_point_index]
-            pair_pos, failed_info_pos = limit_critical_point_from_critical_point(
-                ode_log!,
-                crit_pts,
-                i,
-                index_list,
-                unstable_eigenvector,
-                epsilon,
-                reltol,
-                abstol,
-            )
-            if isempty(failed_info_pos)
-                LightGraphs.add_edge!(graph, pair_pos[1], pair_pos[2])
-            else
-                push!(
-                    failed_info_list,
-                    [critical_point_index, epsilon, unstable_eigenvector, failed_info_pos],
-                )
-            end
-
-            pair_neg, failed_info_neg = limit_critical_point_from_critical_point(
-                ode_log!,
-                crit_pts,
-                i,
-                index_list,
-                unstable_eigenvector,
-                -epsilon,
-                reltol,
-                abstol,
-            )
-
-            if isempty(failed_info_neg)
-                LightGraphs.add_edge!(graph, pair_neg[1], pair_neg[2])
-            else
-                push!(
-                    failed_info_list,
-                    [critical_point_index, -epsilon, unstable_eigenvector, failed_info_neg],
-                )
-            end
-            connectivity_status[i] = 1
-        end
-    end
-
-    ProgressMeter.@showprogress for i = 1:length(index_list)
-        if connectivity_status[i] == 0 && index_list[i] > 1
-            # track paths and stop whenever one path converges
-            critical_point_index = critical_points_indices[i]
-            sub_failed_info_list = []
-            for v in eachcol(unstable_eigenvector_list[critical_point_index])
-                pair, failed_info = limit_critical_point_from_critical_point(
+    interrupted = _run_interruptible(; catch_interrupt = catch_interrupt) do
+        ProgressMeter.@showprogress for i = 1:length(index_list)
+            if connectivity_status[i] == 0 && index_list[i] == 1
+                # need to do path tracking in two directions
+                critical_point_index = critical_points_indices[i]
+                unstable_eigenvector = unstable_eigenvector_list[critical_point_index]
+                pair_pos, failed_info_pos = limit_critical_point_from_critical_point(
                     ode_log!,
                     crit_pts,
                     i,
                     index_list,
-                    v,
+                    unstable_eigenvector,
                     epsilon,
                     reltol,
                     abstol,
                 )
-                if isempty(failed_info)
-                    LightGraphs.add_edge!(graph, pair[1], pair[2])
-                    connectivity_status[i] = 1
-                    sub_failed_info_list = []
-                    break
+                if isempty(failed_info_pos)
+                    LightGraphs.add_edge!(graph, pair_pos[1], pair_pos[2])
                 else
                     push!(
-                        sub_failed_info_list,
-                        [critical_point_index, epsilon, v, failed_info],
+                        failed_info_list,
+                        [critical_point_index, epsilon, unstable_eigenvector, failed_info_pos],
                     )
                 end
 
-                pair, failed_info = limit_critical_point_from_critical_point(
+                pair_neg, failed_info_neg = limit_critical_point_from_critical_point(
                     ode_log!,
                     crit_pts,
                     i,
                     index_list,
-                    v,
+                    unstable_eigenvector,
                     -epsilon,
                     reltol,
                     abstol,
                 )
-                if isempty(failed_info)
-                    LightGraphs.add_edge!(graph, pair[1], pair[2])
-                    connectivity_status[i] = 1
-                    sub_failed_info_list = []
-                    break
+
+                if isempty(failed_info_neg)
+                    LightGraphs.add_edge!(graph, pair_neg[1], pair_neg[2])
                 else
                     push!(
-                        sub_failed_info_list,
-                        [critical_point_index, epsilon, v, failed_info],
+                        failed_info_list,
+                        [critical_point_index, -epsilon, unstable_eigenvector, failed_info_neg],
                     )
                 end
+                connectivity_status[i] = 1
             end
+        end
 
-            if !isempty(sub_failed_info_list)
-                push!(failed_info_list, sub_failed_info_list)
+        ProgressMeter.@showprogress for i = 1:length(index_list)
+            if connectivity_status[i] == 0 && index_list[i] > 1
+                # track paths and stop whenever one path converges
+                critical_point_index = critical_points_indices[i]
+                sub_failed_info_list = []
+                for v in eachcol(unstable_eigenvector_list[critical_point_index])
+                    pair, failed_info = limit_critical_point_from_critical_point(
+                        ode_log!,
+                        crit_pts,
+                        i,
+                        index_list,
+                        v,
+                        epsilon,
+                        reltol,
+                        abstol,
+                    )
+                    if isempty(failed_info)
+                        LightGraphs.add_edge!(graph, pair[1], pair[2])
+                        connectivity_status[i] = 1
+                        sub_failed_info_list = []
+                        break
+                    else
+                        push!(
+                            sub_failed_info_list,
+                            [critical_point_index, -epsilon, v, failed_info],
+                        )
+                    end
+
+                    pair, failed_info = limit_critical_point_from_critical_point(
+                        ode_log!,
+                        crit_pts,
+                        i,
+                        index_list,
+                        v,
+                        -epsilon,
+                        reltol,
+                        abstol,
+                    )
+                    if isempty(failed_info)
+                        LightGraphs.add_edge!(graph, pair[1], pair[2])
+                        connectivity_status[i] = 1
+                        sub_failed_info_list = []
+                        break
+                    else
+                        push!(
+                            sub_failed_info_list,
+                            [critical_point_index, epsilon, v, failed_info],
+                        )
+                    end
+                end
+
+                if !isempty(sub_failed_info_list)
+                    push!(failed_info_list, sub_failed_info_list)
+                end
             end
         end
     end
 
-
-    partition = LightGraphs.connected_components(graph)
-    partition_critical_point_indices = Vector{Int}[]
-    for par in partition
-        push!(partition_critical_point_indices, @view(critical_points_indices[par]))
+    if interrupted
+        @warn "Interrupted while connecting critical points. Returning the partial partition."
     end
-    code = isempty(failed_info_list) ? :success : :partial_success
-    return PartitionResult(partition_critical_point_indices, index_list, failed_info_list, code)
+
+    return _finalize_partition_result(
+        graph,
+        critical_points_indices,
+        index_list,
+        failed_info_list;
+        interrupted = interrupted,
+    )
 end
 
-partition_of_critical_points(
+function partition_of_critical_points(
     r::RoutingFunction,
-    result::RoutingPointsResult,
+    routing_result::RoutingPointsResult,
     args...;
     kwargs...,
-) = partition_of_critical_points(r, routing_points(result), args...; kwargs...)
+)
+    partition_result =
+        partition_of_critical_points(r, routing_points(routing_result), args...; kwargs...)
+    if return_code(routing_result) == :interrupted &&
+       return_code(partition_result) != :singular_hessian
+        return PartitionResult(
+            regions(partition_result),
+            morse_indices(partition_result),
+            failed_info(partition_result),
+            :interrupted,
+        )
+    end
+    return partition_result
+end
 
 
 @doc raw"""
@@ -241,6 +291,8 @@ partition_of_critical_points(
 Result returned by [`partition_of_critical_points`](@ref). Use
 [`regions`](@ref) for connected components, [`morse_indices`](@ref) for the
 critical point indices, and [`failed_info`](@ref) for failed connection attempts.
+When [`return_code`](@ref) is `:interrupted`, the regions are provisional and
+may merge after the remaining paths are tracked.
 """
 struct PartitionResult{P,I,F}
     regions::P
