@@ -33,6 +33,6 @@ Order = [:type, :function]
 
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
-Pages = ["routing_functions.jl", "critical_points.jl", "graph.jl"]
+Pages = ["routing_functions.jl", "critical_points.jl", "graph.jl", "membership.jl"]
 Order = [:type, :function]
 ```
