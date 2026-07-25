@@ -1,4 +1,3 @@
-
 # ProjectedHypersurfaces.jl
 
 This repository implements "numerical elimination" techniques for representing, and computing the complement of, real hypersurfaces that arise through projection of a known variety.
@@ -10,6 +9,7 @@ It is based on the paper [Elimination Without Eliminating: Computing Complements
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
 Pages = ["hypersurfaces.jl"]
+Private = false
 Order = [:type, :function]
 ```
 
@@ -18,6 +18,7 @@ Order = [:type, :function]
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
 Pages = ["pseudo_witness_sets.jl"]
+Private = false
 Order = [:type, :function]
 ```
 
@@ -26,6 +27,7 @@ Order = [:type, :function]
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
 Pages = ["interpolation.jl"]
+Private = false
 Order = [:type, :function]
 ```
 
@@ -34,5 +36,6 @@ Order = [:type, :function]
 ```@autodocs
 Modules = [ProjectedHypersurfaces]
 Pages = ["routing_functions.jl", "critical_points.jl", "graph.jl"]
+Private = false
 Order = [:type, :function]
 ```
