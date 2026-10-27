@@ -66,7 +66,7 @@ The pseduo-witness set constitutes a powerful implicit representation of the hyp
 julia> contains(h, [2, 1])
 true
 
-julia> containts(h, [1, 1])
+julia> contains(h, [1, 1])
 false
 ```
 
