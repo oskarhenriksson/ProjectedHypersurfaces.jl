@@ -214,8 +214,8 @@ function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::Abstrac
     # PWS.tZ contains the coordinates (t,Z) for the points where the line
     # (PWS.L.direction*t+PWS.L.point; Z) intersects V(F)
     for (l, w) in enumerate(PWS.tZ)
-            HC.track!(tracker, w, 1)
-            copyto!(u[l], tracker.tracker.state.x)
+code =             HC.track!(tracker, w, 1)
+            copyto!(u[l], tracker.state.solution)
             PWS.track_report[l] = all(isfinite, u[l]) # note if the track was successful or not
     end
 

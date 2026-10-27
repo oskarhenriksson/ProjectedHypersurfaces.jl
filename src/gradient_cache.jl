@@ -233,7 +233,7 @@ function _track_fiber_from!(dest, PWS::PseudoWitnessSet, starts, p_start, p_targ
     succeeded = true
     for (i, start) in enumerate(starts)
         code = HC.track!(tracker, start, 1)
-        copyto!(dest[i], tracker.tracker.state.x)
+        copyto!(dest[i], tracker.state.solution)
         ok = HC.is_success(code) && all(isfinite, dest[i])
         PWS.track_report[i] = ok
         succeeded &= ok
