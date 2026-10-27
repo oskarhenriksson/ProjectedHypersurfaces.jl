@@ -204,7 +204,6 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     # Use cached symbolic objects and arrays
     JsuF = GC.JsuF
     JPF = GC.JPF
-    JBF = GC.JBF
     contracted_hessian_system = GC.contracted_hessian_system
 
     # Preallocated temporaries and cached LU data keep the Hessian path allocation-free.
@@ -247,12 +246,15 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         JPF_temp = GC.JPF_temp
         _evaluate_fused_columns!(JPF_temp, JPF_vals, JPF, v0, N, k)
 
+        # G_b = G_p / s for G(s,u;p,b) = F(p + b/s,u). Cache the
+        # derived block, but solve only for z_p; z_b = z_p / s.
         JBF_temp = GC.JBF_temp
-        _evaluate_fused_columns!(JBF_temp, JBF_vals, JBF, v0, k, N)
-
-        _fill_rhs1!(rhs1, JPF_temp, JBF_temp)
-
-        rhs1 .*= -1
+        @inbounds for col = 1:k, row = 1:N
+            value = JPF_temp[row, col] / S[i]
+            JBF_temp[col, row] = value
+            JBF_vals[(row - 1) * k + col] = value
+            rhs1[row, col] = -JPF_temp[row, col]
+        end
         # In-place linear solving with pre-allocated pivot vector
         _, ipiv, info = LinearAlgebra.LAPACK.getrf!(JsuF_temp, GC.ipiv)
         info == 0 || error("Singular implicit Jacobian while evaluating the projected hypersurface Hessian.")
@@ -262,42 +264,24 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         @inbounds for jj = 1:N
             JsuF_ipiv[i, jj] = ipiv[jj]
         end
-        LinearAlgebra.LAPACK.getrs!('N', JsuF_temp, ipiv, rhs1)
+        LinearAlgebra.LAPACK.getrs!('N', JsuF_temp, ipiv, view(rhs1, :, 1:k))
+        @inbounds for col = 1:k, row = 1:N
+            rhs1[row, k + col] = rhs1[row, col] / S[i]
+        end
 
         _copy_rhs1_blocks!(SP, SB, UP, UB, rhs1, i)
         @inbounds @simd for jj = 1:k
             u[jj] -= SB[i, jj]
         end
 
-    end
-
-    if !isnothing(p)
-        @inbounds for ii = 1:length(u)
-            u[ii] -= p[ii]
-        end
-    end
-
-    # Evaluate the already-contracted second-order residual. The compiled system
-    # accepts (s,u,p,λ,x_p,x_β) and returns the k×k Hessian contribution directly.
-    for j = 1:length(S)
-
-        !PWS.track_report[j] && continue # skip if j-th track failed
-
-        _fill_v0!(v0, S, Uvals, x, j)
-
-        Jtu = GC.Jtu_temp
-        @inbounds for row = 1:N, col = 1:N
-            Jtu[row, col] = JsuF_lu[j, row, col]
-        end
-        @inbounds for ii = 1:N
-            GC.ipiv[ii] = JsuF_ipiv[j, ii]
-        end
+        # Finish this fibre while its LU factors and input are still in the
+        # workspaces. The factors and sensitivities above remain cached.
         fill!(adjoint_rhs, zero(ComplexF64))
         adjoint_rhs[1] = one(ComplexF64)
-        LinearAlgebra.LAPACK.getrs!('T', Jtu, GC.ipiv, adjoint_rhs)
+        LinearAlgebra.LAPACK.getrs!('T', JsuF_temp, ipiv, adjoint_rhs)
 
         _fill_contracted_hessian_input!(
-            contracted_hessian_input, v0, adjoint_rhs, SP, UP, SB, UB, j,
+            contracted_hessian_input, v0, adjoint_rhs, SP, UP, SB, UB, i,
         )
         evaluate!(contracted_hessian_vals, contracted_hessian_system, contracted_hessian_input)
         @inbounds for b = 1:k, a = 1:k
@@ -305,6 +289,11 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         end
     end
 
+    if !isnothing(p)
+        @inbounds for ii = 1:length(u)
+            u[ii] -= p[ii]
+        end
+    end
 
     nothing
 end
