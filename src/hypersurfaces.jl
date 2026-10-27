@@ -95,7 +95,7 @@ function Base.contains(
     length(p) == nvariables(h) || throw(ArgumentError("Expected $(nvariables(h)) coordinates."))
 
     PWS, GC = h.PWS, h.GC
-    track!(GC, PWS, p)
+    track!(GC, PWS, p) || error("Cannot determine membership: pseudo-witness fibre tracking failed.")
 
     direction_norm = norm(PWS.L.direction)
     for (track_succeeded, sol) in zip(PWS.track_report, GC.line_hypersurface_intersections)
@@ -118,7 +118,7 @@ function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
 
     S = GC.S
 
-    track!(GC, PWS, x)
+    track!(GC, PWS, x) || return NaN
 
     u = 0.0
 
@@ -152,7 +152,10 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     u .= zero(eltype(u))
 
     # `track!` restores or computes both the tracked intersections and the cached S/Uvals data.
-    track!(GC, PWS, x)
+    if !track!(GC, PWS, x)
+        fill!(u, NaN)
+        return nothing
+    end
 
     # Adjoint implicit differentiation.  If J = G_(s,u) and Jᵀλ = e₁, then
     # -∂s/∂β = λᵀG_β, which is precisely one fibre contribution to
@@ -172,7 +175,10 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
         fill!(adjoint_rhs, zero(ComplexF64))
         adjoint_rhs[1] = one(ComplexF64)
         _, ipiv, info = LinearAlgebra.LAPACK.getrf!(JsuF_temp, GC.ipiv)
-        info == 0 || error("Singular implicit Jacobian while evaluating the projected hypersurface gradient.")
+        if info != 0
+            fill!(u, NaN)
+            return nothing
+        end
         LinearAlgebra.LAPACK.getrs!('T', JsuF_temp, ipiv, adjoint_rhs)
 
         _fill_adjoint_gradient_input!(adjoint_gradient_input, v0, adjoint_rhs)
@@ -228,7 +234,11 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     U .= zero(eltype(U))
 
     # `track!` restores or computes both the tracked intersections and the cached S/Uvals data.
-    track!(GC, PWS, x)
+    if !track!(GC, PWS, x)
+        fill!(u, NaN)
+        fill!(U, NaN)
+        return nothing
+    end
 
     #Obtain gradients of S and U with respect to p and β
     for i = 1:length(S)
@@ -257,7 +267,11 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         end
         # In-place linear solving with pre-allocated pivot vector
         _, ipiv, info = LinearAlgebra.LAPACK.getrf!(JsuF_temp, GC.ipiv)
-        info == 0 || error("Singular implicit Jacobian while evaluating the projected hypersurface Hessian.")
+        if info != 0
+            fill!(u, NaN)
+            fill!(U, NaN)
+            return nothing
+        end
         @inbounds for row = 1:N, col = 1:N
             JsuF_lu[i, row, col] = JsuF_temp[row, col]
         end

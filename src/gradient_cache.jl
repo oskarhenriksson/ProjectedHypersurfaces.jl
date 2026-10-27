@@ -244,6 +244,8 @@ end
 #Track the pseudo-witness fibre to `p`, reusing the most recent fibre when possible.
 # Updates are transactional: a failed warm track is discarded and retried from the
 # original witness slice.  An incomplete fibre is never used for differentiation.
+# Return false on numerical tracking failure so evaluators can signal an
+# undefined value to the outer tracker without aborting the other paths.
 function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
     GC.fiber_evaluations += 1
 
@@ -254,7 +256,7 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
             PWS.track_report[i] = true
         end
         get_s_and_Uvals!(GC.Uvals, GC.S, GC, PWS)
-        return nothing
+        return true
     end
 
     t0 = time_ns()
@@ -278,7 +280,7 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
     if !success
         GC.fiber_failures += 1
         GC.fiber_valid = false
-        error("Failed to track the complete pseudo-witness fibre to the evaluation point.")
+        return false
     end
 
     copyto!(GC.fiber_point, p)
@@ -289,7 +291,7 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
     end
     GC.fiber_valid = GC.warm_fiber_tracking
     get_s_and_Uvals!(GC.Uvals, GC.S, GC, PWS)
-    nothing
+    true
 end
 
 function set_warm_fiber_tracking!(GC::GradientCache, enabled::Bool)
