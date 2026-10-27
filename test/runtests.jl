@@ -78,6 +78,28 @@ end
     @test norm(U-U2) < 1e-12
     @test norm(∇r_symbolic(p0)-∇r(p0)) < 1e-12
 
+    # test Jacobian (Hessian) across an evaluation sequence to verify correct cache usage. 
+    log_gradient = System(differentiate(log(h_symbolic), [a, b]), variables = [a, b])
+    log_hessian = System(vec(differentiate(log_gradient.expressions, [a, b])), variables = [a, b])
+    for start in ([0.3, -0.7], ComplexF64[0.2 + 0.3im, -0.4 + 0.1im])
+        reset_fiber_cache!(h)
+        nearby = start + [1e-3, -2e-3]
+        # Evaluate a fresh point, move to a nearby point, then repeat it.
+        # Every result must agree with the defining polynomial, regardless
+        # of evaluation history or previously written output buffers.
+        for point in (start, nearby, nearby), offset in (nothing, ComplexF64[0.1, -0.2])
+            fill!(u, ComplexF64(NaN))
+            fill!(U, ComplexF64(NaN))
+            ProjectedHypersurfaces.gradient_and_hessian!(u, U, h, point, offset)
+            expected_gradient = log_gradient(point)
+            if !isnothing(offset)
+                expected_gradient -= offset
+            end
+            @test u ≈ expected_gradient atol = 1e-11
+            @test U ≈ reshape(log_hessian(point), 2, 2) atol = 1e-10
+        end
+    end
+    
     # Check realness
     p0 = randn(2)
     ProjectedHypersurfaces.evaluate_and_jacobian!(u, U, ∇r, p0)
