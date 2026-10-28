@@ -555,3 +555,27 @@ end
 
 
 end
+
+@testset "Lost paths" begin
+    @var x y z
+    F = System([x^2 - y, x*z - 1], variables=[x, y, z])
+    L = ProjectedHypersurfaces.Line(ComplexF64[0, 2], ComplexF64[1, 1])
+    PWS = PseudoWitnessSet(F, 2; L=L)
+    h = ProjectedHypersurface(F, [x, y]; PWS=PWS)
+
+    @test degree(h) == 2
+
+    # When we move the line to pass through (1,1), one witness point goes to infinity
+    # The single reamining witness point is not enough for valuation
+    @test isnan(h([1, 1])) 
+    @test count(h.PWS.track_report) == 1
+    @test !h.GC.fiber_valid
+
+    # It is however good enough to detect membership of (1,1), but not of (0,0)
+    @test contains(h, [1, 1])
+    @test_throws ErrorException contains(h, [0.0, 0.0])
+
+    # We can still use membership testing after having enountered a lost path
+    @test !contains(h, [1.0, 2.0])
+    @test count(h.PWS.track_report) == 2
+end
