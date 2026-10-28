@@ -280,7 +280,7 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
         PWS.track_report[i] = true
     end
     GC.fiber_regular = regular
-    GC.fiber_valid = GC.warm_fiber_tracking
+    GC.fiber_valid = GC.warm_fiber_tracking && regular
     get_s_and_Uvals!(GC.Uvals, GC.S, GC, PWS)
     true
 end
