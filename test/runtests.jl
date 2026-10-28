@@ -532,3 +532,26 @@ end
 
 
 end
+
+
+
+@testset "Singular witness set" begin
+
+    @var a b x
+    F = System([x^2+a*x+b, 2*x+a], variables = [a, b, x])
+    
+    # Use a horizontal line to form the wintess set
+    L = ProjectedHypersurfaces.Line(ComplexF64[2, 3], ComplexF64[1, 0])
+    PWS = PseudoWitnessSet(F, 2; L = L)
+    h = ProjectedHypersurface(F, [a, b]; PWS = PWS)
+
+    p = [1, 0] # point with singular witness points
+    
+    @test h(p) |> abs < 1e-12 
+    @test h.PWS.tracker.state.singular
+    @test !h.GC.fiber_valid
+
+    @test all(isnan, gradient(h, p))
+
+
+end
