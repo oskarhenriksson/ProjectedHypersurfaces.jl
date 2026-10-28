@@ -233,7 +233,9 @@ function _expand_start_solutions(
             prob = SciMLBase.ODEProblem(g, start_pt, tspan)
             sol = DE.solve(prob, reltol = 1e-6, abstol = 1e-6)
             convergence_point = last(sol.u)
-            improved_point = newton(∇r, convergence_point) |> solution
+            refinement = newton(∇r, convergence_point)
+            HC.is_success(refinement) || continue # skip points for which Newton didn't converge
+            improved_point = solution(refinement)
             push!(new_pts, improved_point)
             gradient_success_count += 1                
         catch e
