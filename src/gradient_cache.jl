@@ -293,23 +293,3 @@ fiber_tracking_stats(GC::GradientCache) = (
     tracking_seconds = Float64(GC.fiber_tracking_ns) / 1e9,
 )
 
-@inline _fiber_tracking_counters(GC::GradientCache) = (
-    evaluations = GC.fiber_evaluations,
-    exact_hits = GC.fiber_exact_hits,
-    warm_tracks = GC.fiber_warm_tracks,
-    cold_tracks = GC.fiber_cold_tracks,
-    fallbacks = GC.fiber_fallbacks,
-    failures = GC.fiber_failures,
-    tracking_ns = GC.fiber_tracking_ns,
-)
-
-function _add_fiber_tracking_delta!(GC::GradientCache, before, after)
-    GC.fiber_evaluations += after.evaluations - before.evaluations
-    GC.fiber_exact_hits += after.exact_hits - before.exact_hits
-    GC.fiber_warm_tracks += after.warm_tracks - before.warm_tracks
-    GC.fiber_cold_tracks += after.cold_tracks - before.cold_tracks
-    GC.fiber_fallbacks += after.fallbacks - before.fallbacks
-    GC.fiber_failures += after.failures - before.failures
-    GC.fiber_tracking_ns += after.tracking_ns - before.tracking_ns
-    GC
-end

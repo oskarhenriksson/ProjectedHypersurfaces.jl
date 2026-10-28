@@ -321,8 +321,7 @@ hessian(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC} = gradient_and_
 """
     fiber_tracking_stats(h::ProjectedHypersurface)
 
-Return cumulative fibre-tracking diagnostics. Work performed by parallel
-monodromy workers is aggregated into the original hypersurface after each solve.
+Return cumulative fibre-tracking diagnostics for this hypersurface evaluator.
 """
 fiber_tracking_stats(h::ProjectedHypersurface) = fiber_tracking_stats(h.GC)
 reset_fiber_cache!(h::ProjectedHypersurface) = reset_fiber_cache!(h.GC)
