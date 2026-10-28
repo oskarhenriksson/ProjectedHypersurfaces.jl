@@ -95,10 +95,13 @@ function Base.contains(
     length(p) == nvariables(h) || throw(ArgumentError("Expected $(nvariables(h)) coordinates."))
 
     PWS, GC = h.PWS, h.GC
-    track!(GC, PWS, p) || error("Cannot determine membership: pseudo-witness fibre tracking failed.")
+    complete = track!(GC, PWS, p)
+
+    # If some paths failed, extract the points we managed to get from fiber_scratch
+    intersections = complete ? GC.line_hypersurface_intersections : GC.fiber_scratch
 
     direction_norm = norm(PWS.L.direction)
-    for (track_succeeded, sol) in zip(PWS.track_report, GC.line_hypersurface_intersections)
+    for (track_succeeded, sol) in zip(PWS.track_report, intersections)
         if !track_succeeded || !all(isfinite, sol)
             continue
         end
@@ -109,7 +112,10 @@ function Base.contains(
             return true
         end
     end
-
+    
+    # To assert non-membership, we need a complete witness set
+    complete || error("Cannot determine membership: pseudo-witness fibre tracking failed.")
+    
     false
 end
 
