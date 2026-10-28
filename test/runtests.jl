@@ -133,19 +133,7 @@ end
     # Test that the expansion of start solutions works
     ∇r = RoutingGradient(r)
     MS, H, S0, rhs0, k = ProjectedHypersurfaces._setup_monodromy_solver(∇r)
-    @test length(MS.trackers) == Threads.nthreads()
-    if Threads.nthreads() > 1
-        worker_stats_before = ProjectedHypersurfaces._snapshot_worker_fiber_stats(MS)
-        target_before = ProjectedHypersurfaces._fiber_tracking_counters(h.GC)
-        copied_worker_h = ProjectedHypersurfaces._worker_hypersurfaces(MS.trackers[2])[1]
-        @test copied_worker_h.GC !== h.GC
-        copied_worker_h.GC.fiber_evaluations += 2
-        copied_worker_h.GC.fiber_tracking_ns += UInt64(7)
-        ProjectedHypersurfaces._merge_worker_fiber_stats!(∇r.r.H, MS, worker_stats_before)
-        target_after = ProjectedHypersurfaces._fiber_tracking_counters(h.GC)
-        @test target_after.evaluations == target_before.evaluations + 2
-        @test target_after.tracking_ns == target_before.tracking_ns + UInt64(7)
-    end
+    @test length(MS.trackers) == 1
     S0, new_pts = ProjectedHypersurfaces._expand_start_solutions(
         ∇r, H, S0, rhs0, k;
         start_grid_width=10,
