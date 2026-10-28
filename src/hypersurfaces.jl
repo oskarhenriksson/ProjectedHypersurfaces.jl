@@ -115,7 +115,7 @@ function Base.contains(
     
     # To assert non-membership, we need a complete witness set
     complete || error("Cannot determine membership: pseudo-witness fibre tracking failed.")
-    
+
     false
 end
 
@@ -152,7 +152,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     adjoint_gradient_input = GC.adjoint_gradient_input
     adjoint_gradient_vals = GC.adjoint_gradient_vals
 
-    N, n = size(PWS.F)
+    N = size(PWS.F, 1)
     k = n_projection_variables(PWS)
 
     u .= zero(eltype(u))
@@ -218,9 +218,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     JPF = GC.JPF
     contracted_hessian_system = GC.contracted_hessian_system
 
-    # Preallocated temporaries and cached LU data keep the Hessian path allocation-free.
-    JsuF_lu = GC.JsuF_lu
-    JsuF_ipiv = GC.JsuF_ipiv
+    # Preallocated temporaries (to keep the Hessian computaion allocation-free)
     v0 = GC.v0
     S = GC.S
     Uvals = GC.Uvals
@@ -229,12 +227,12 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     UP = GC.UP
     UB = GC.UB
     rhs1, adjoint_rhs = GC.rhs1, GC.adjoint_rhs
-    JsuF_vals, JPF_vals, JBF_vals = GC.JsuF_vals, GC.JPF_vals, GC.JBF_vals
+    JsuF_vals, JPF_vals = GC.JsuF_vals, GC.JPF_vals
     contracted_hessian_input = GC.contracted_hessian_input
     contracted_hessian_vals = GC.contracted_hessian_vals
 
     k = n_projection_variables(PWS)
-    N, n = size(PWS.F)
+    N = size(PWS.F, 1)
 
     u .= zero(eltype(u))
     U .= zero(eltype(U))
@@ -262,13 +260,9 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
         JPF_temp = GC.JPF_temp
         _evaluate_fused_columns!(JPF_temp, JPF_vals, JPF, v0, N, k)
 
-        # G_b = G_p / s for G(s,u;p,b) = F(p + b/s,u). Cache the
-        # derived block, but solve only for z_p; z_b = z_p / s.
-        JBF_temp = GC.JBF_temp
+        # Solve for z_p. For G(s,u;p,b) = F(p + b/s,u),
+        # G_b = G_p / s and hence z_b = z_p / s.
         @inbounds for col = 1:k, row = 1:N
-            value = JPF_temp[row, col] / S[i]
-            JBF_temp[col, row] = value
-            JBF_vals[(row - 1) * k + col] = value
             rhs1[row, col] = -JPF_temp[row, col]
         end
         # In-place linear solving with pre-allocated pivot vector
@@ -277,12 +271,6 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
             fill!(u, NaN)
             fill!(U, NaN)
             return nothing
-        end
-        @inbounds for row = 1:N, col = 1:N
-            JsuF_lu[i, row, col] = JsuF_temp[row, col]
-        end
-        @inbounds for jj = 1:N
-            JsuF_ipiv[i, jj] = ipiv[jj]
         end
         LinearAlgebra.LAPACK.getrs!('N', JsuF_temp, ipiv, view(rhs1, :, 1:k))
         @inbounds for col = 1:k, row = 1:N
@@ -413,21 +401,6 @@ end
 @inline function _evaluate_fused_columns!(dest, vals, F, x, nrows, ncols)
     evaluate!(vals, F, x)
     _unpack_fused_columns!(dest, vals, nrows, ncols)
-end
-
-@inline function _fill_rhs1!(rhs1, JPF_temp, JBF_temp)
-    for col = 1:size(JPF_temp, 2)
-        @inbounds for row = 1:size(rhs1, 1)
-            rhs1[row, col] = JPF_temp[row, col]
-        end
-    end
-    for idx = 1:size(JBF_temp, 1)
-        col = size(JPF_temp, 2) + idx
-        @inbounds for row = 1:size(rhs1, 1)
-            rhs1[row, col] = JBF_temp[idx, row]
-        end
-    end
-    rhs1
 end
 
 @inline function _copy_rhs1_blocks!(SP, SB, UP, UB, rhs1, idx)

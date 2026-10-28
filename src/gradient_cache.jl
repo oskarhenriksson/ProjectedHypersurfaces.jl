@@ -3,7 +3,6 @@ mutable struct GradientCache{T}
     line_hypersurface_intersections::Vector{Vector{T}}
     JsuF::HC.CompiledSystem
     JPF::HC.CompiledSystem
-    JBF::HC.CompiledSystem
     adjoint_gradient_system::HC.CompiledSystem
     contracted_hessian_system::HC.CompiledSystem
     S::Vector{T}
@@ -17,17 +16,12 @@ mutable struct GradientCache{T}
     adjoint_rhs::Vector{T}
     JsuF_vals::Vector{T}
     JPF_vals::Vector{T}
-    JBF_vals::Vector{T}
     adjoint_gradient_input::Vector{T}
     adjoint_gradient_vals::Vector{T}
     contracted_hessian_input::Vector{T}
     contracted_hessian_vals::Vector{T}
     JsuF_temp::Matrix{T}
     JPF_temp::Matrix{T}
-    JBF_temp::Matrix{T}
-    Jtu_temp::Matrix{T} # Temporary storage for evaluating JsuF
-    JsuF_lu::Array{T,3}
-    JsuF_ipiv::Matrix{LinearAlgebra.LAPACK.BlasInt}
     ipiv::Vector{LinearAlgebra.LAPACK.BlasInt} # allocation for pivot for lu! in place linear solving
     gradient_temp::Vector{T}
     Hess_temp::Matrix{T}
@@ -69,14 +63,10 @@ function compute_systems(F, n, k, B)
     JPF_exprs = map(∇α) do ∇vi
         evaluate(∇vi, β => B)
     end
-    JBF_exprs = map(F_on_line) do f
-        evaluate(HC.ModelKit.differentiate(f, β), β => B)
-    end
 
     # Store each derivative block in one compiled system to avoid many tiny system evaluations.
     JsuF = CompiledSystem(System(reduce(vcat, JsuF_exprs), variables = vars))
     JPF = CompiledSystem(System(reduce(vcat, JPF_exprs), variables = vars))
-    JBF = CompiledSystem(System(reduce(vcat, JBF_exprs), variables = vars))
 
     # Compile the contractions that are actually needed.  This avoids evaluating
     # full G_xx, G_xp, G_xβ and G_pβ tensors at every fibre point.
@@ -119,7 +109,7 @@ function compute_systems(F, n, k, B)
         variables = [vars; λ; vec(xp); vec(xb)],
     ))
 
-    return JsuF, JPF, JBF, adjoint_gradient_system, contracted_hessian_system
+    return JsuF, JPF, adjoint_gradient_system, contracted_hessian_system
 
 end
 
@@ -144,7 +134,7 @@ function GradientCache(PWS)
     SB = zeros(ComplexF64, d, k)
     UP = zeros(ComplexF64, d, n - k, k)
     UB = zeros(ComplexF64, d, n - k, k)
-    JsuF, JPF, JBF, adjoint_gradient_system, contracted_hessian_system =
+    JsuF, JPF, adjoint_gradient_system, contracted_hessian_system =
         compute_systems(F, n, k, L.direction)
 
 
@@ -153,7 +143,6 @@ function GradientCache(PWS)
     adjoint_rhs = zeros(ComplexF64, N)
     JsuF_vals = zeros(ComplexF64, N * N)
     JPF_vals = zeros(ComplexF64, N * k)
-    JBF_vals = zeros(ComplexF64, N * k)
     adjoint_gradient_input = zeros(ComplexF64, N + k + N)
     adjoint_gradient_vals = zeros(ComplexF64, k)
     contracted_hessian_input = zeros(ComplexF64, N + k + N + 2 * N * k)
@@ -161,10 +150,6 @@ function GradientCache(PWS)
 
     JsuF_temp = zeros(ComplexF64, N, 1+n-k)
     JPF_temp = zeros(ComplexF64, N, k)
-    JBF_temp = zeros(ComplexF64, k, N)
-    Jtu_temp = zeros(ComplexF64, N, 1+n-k) # TODO: Maybe can reuse Jsu_temp....
-    JsuF_lu = zeros(ComplexF64, d, N, N)
-    JsuF_ipiv = Matrix{LinearAlgebra.LAPACK.BlasInt}(undef, d, N)
 
     ipiv = Vector{LinearAlgebra.LAPACK.BlasInt}(undef, min(size(JsuF_temp,1), size(JsuF_temp,2)))
 
@@ -181,7 +166,6 @@ function GradientCache(PWS)
                     line_hypersurface_intersections,
                     JsuF,
                     JPF,
-                    JBF,
                     adjoint_gradient_system,
                     contracted_hessian_system,
                     S, 
@@ -195,17 +179,12 @@ function GradientCache(PWS)
                     adjoint_rhs,
                     JsuF_vals,
                     JPF_vals,
-                    JBF_vals,
                     adjoint_gradient_input,
                     adjoint_gradient_vals,
                     contracted_hessian_input,
                     contracted_hessian_vals,
                     JsuF_temp, 
                     JPF_temp, 
-                    JBF_temp, 
-                    Jtu_temp, 
-                    JsuF_lu,
-                    JsuF_ipiv,
                     ipiv,
                     gradient_temp, 
                     Hess_temp,
