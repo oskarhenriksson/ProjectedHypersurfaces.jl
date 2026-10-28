@@ -226,21 +226,6 @@ end
     true
 end
 
-function _track_fiber_from!(dest, PWS::PseudoWitnessSet, starts, p_start, p_target)
-    tracker = PWS.tracker
-    start_parameters!(tracker, p_start)
-    target_parameters!(tracker, p_target)
-    succeeded = true
-    for (i, start) in enumerate(starts)
-        code = HC.track!(tracker, start, 1)
-        copyto!(dest[i], tracker.state.solution)
-        ok = HC.is_success(code) && all(isfinite, dest[i])
-        PWS.track_report[i] = ok
-        succeeded &= ok
-    end
-    succeeded
-end
-
 #Track the pseudo-witness fibre to `p`, reusing the most recent fibre when possible.
 # Updates are transactional: a failed warm track is discarded and retried from the
 # original witness slice.  An incomplete fibre is never used for differentiation.
