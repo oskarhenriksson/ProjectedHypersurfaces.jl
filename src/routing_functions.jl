@@ -225,6 +225,26 @@ evaluate!(u, ∇r::RoutingGradient, x, p = nothing) = gradient!(u, ∇r.r, x, p)
 evaluate_and_jacobian(∇r::RoutingGradient, x, p = nothing) = gradient_and_hessian(∇r.r, x, p)
 evaluate_and_jacobian!(u, U, ∇r::RoutingGradient, x, p = nothing) = gradient_and_hessian!(u, U, ∇r.r, x, p)
 
+function taylor!(u, ::Val{1}, F::RoutingGradient, x, p::TaylorVector)
+    # For a parameter homotopy the predictor asks for the coefficient of T in
+    # ∇log(r)(x) - p(T), with x held fixed.  The routing gradient itself has no
+    # explicit parameters, hence this coefficient is simply -p₁.
+    _, p1 = vectors(p)
+    @inbounds for i in eachindex(u)
+        u[i] = -p1[i]
+    end
+    u
+end
+
+function taylor!(u, ::Val{1}, F::RoutingGradient, x, p)
+    fill!(u, zero(eltype(u)))
+    u
+end
+
 function taylor!(u, ::Val, F::RoutingGradient, x, p)
-    fill!(u, zero(ComplexF64))
+    # Higher coefficients require third and fourth derivatives of log(r), which
+    # are not available yet. Preserve the legacy zero-coefficient behavior for
+    # compatibility; these values are not exact higher derivatives.
+    fill!(u, zero(eltype(u)))
+    u
 end
