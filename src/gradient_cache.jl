@@ -39,6 +39,7 @@ mutable struct GradientCache{T}
     fiber_scratch::Vector{Vector{T}}
     warm_fiber_tracking::Bool
     fiber_valid::Bool
+    fiber_regular::Bool
     fiber_evaluations::Int
     fiber_exact_hits::Int
     fiber_warm_tracks::Int
@@ -213,6 +214,7 @@ function GradientCache(PWS)
                     fiber_scratch,
                     true,
                     false,
+                    false,
                     0, 0, 0, 0, 0, 0,
                     UInt64(0)
                 )
@@ -248,9 +250,10 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
     success = false
     if GC.warm_fiber_tracking && GC.fiber_valid
         GC.fiber_warm_tracks += 1
-        success = _track_fiber_from!(
+        result = _track_fiber_from!(
             GC.fiber_scratch, PWS, GC.fiber_solutions, GC.fiber_point, p,
         )
+        success, regular = result.succeeded, result.regular
         if !success
             GC.fiber_fallbacks += 1
         end
@@ -258,13 +261,15 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
 
     if !success
         GC.fiber_cold_tracks += 1
-        success = _track_fiber_from!(GC.fiber_scratch, PWS, PWS.tZ, PWS.L.point, p)
+        result = _track_fiber_from!(GC.fiber_scratch, PWS, PWS.tZ, PWS.L.point, p)
+        success, regular = result.succeeded, result.regular
     end
     GC.fiber_tracking_ns += UInt64(time_ns() - t0)
 
     if !success
         GC.fiber_failures += 1
         GC.fiber_valid = false
+        GC.fiber_regular = false
         return false
     end
 
@@ -274,6 +279,7 @@ function track!(GC::GradientCache, PWS::PseudoWitnessSet, p)
         copyto!(GC.line_hypersurface_intersections[i], GC.fiber_scratch[i])
         PWS.track_report[i] = true
     end
+    GC.fiber_regular = regular
     GC.fiber_valid = GC.warm_fiber_tracking
     get_s_and_Uvals!(GC.Uvals, GC.S, GC, PWS)
     true

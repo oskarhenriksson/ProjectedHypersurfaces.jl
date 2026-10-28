@@ -152,7 +152,7 @@ function gradient!(u, h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     u .= zero(eltype(u))
 
     # `track!` restores or computes both the tracked intersections and the cached S/Uvals data.
-    if !track!(GC, PWS, x)
+    if !track!(GC, PWS, x) || !GC.fiber_regular
         fill!(u, NaN)
         return nothing
     end
@@ -234,7 +234,7 @@ function gradient_and_hessian!(u, U, h::ProjectedHypersurface{TC}, x, p = nothin
     U .= zero(eltype(U))
 
     # `track!` restores or computes both the tracked intersections and the cached S/Uvals data.
-    if !track!(GC, PWS, x)
+    if !track!(GC, PWS, x) || !GC.fiber_regular
         fill!(u, NaN)
         fill!(U, NaN)
         return nothing
