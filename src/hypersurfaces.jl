@@ -87,9 +87,9 @@ function decompose(h::ProjectedHypersurface)
 end
 
 
-function Base.contains(
-    h::ProjectedHypersurface,
-    p::AbstractVector;
+function Base.in(
+    p::AbstractVector,
+    h::ProjectedHypersurface;
     atol = sqrt(eps(Float64)),
     residual_atol = atol,
 )
@@ -119,8 +119,7 @@ function Base.contains(
 
     false
 end
-Base.in(p, h::ProjectedHypersurface; kwargs...) = Base.contains(h, p; kwargs...)
-membership(p, h::ProjectedHypersurface; kwargs...) = Base.contains(h, p; kwargs...)
+membership(p, h::ProjectedHypersurface; kwargs...) = Base.in(p, h; kwargs...)
 
 function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     PWS, GC = h.PWS, h.GC

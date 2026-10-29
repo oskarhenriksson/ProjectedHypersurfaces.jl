@@ -59,7 +59,7 @@ end
 
     # Test sample
     sample = sample_points(h, 6)
-    @test all(contains.(Ref(h), sample))
+    @test all(s -> s ∈ h, sample)
     @test all([abs(evaluate(h_symbolic, [a, b]=>pt)) < 1e-9 for pt in sample])
 
     # Test interpolation
@@ -407,14 +407,13 @@ end;
     F = System([x^2 + a * x + b; 2x + a], variables=[a, b, x])
     h = ProjectedHypersurface(F, [a, b])
 
-    @test contains(h, [2.0, 1.0])
     @test [2.0, 1.0] ∈ h
     @test membership([2.0, 1.0], h)
-    @test !contains(h, [3.0, 1.0])
-    @test_throws ArgumentError contains(h, [2.0])
+    @test [3.0, 1.0] ∉ h
+    @test_throws ArgumentError [2.0] ∈ h
 
     sample = sample_points(h, 6)
-    @test all(contains.(Ref(h), sample))
+    @test all(s -> s ∈ h, sample)
 end
 @testset "Hypersurface evaluations for quadratic" begin
 
@@ -562,10 +561,10 @@ end
     @test !h.GC.fiber_valid
 
     # It is however good enough to detect membership of (1,1), but not of (0,0)
-    @test contains(h, [1, 1])
-    @test_throws ErrorException contains(h, [0.0, 0.0])
+    @test [1, 1] ∈ h
+    @test_throws ErrorException membership([0.0, 0.0], h)
 
     # We can still use membership testing after having enountered a lost path
-    @test !contains(h, [1.0, 2.0])
+    @test [1.0, 2.0] ∉ h
     @test count(h.PWS.track_report) == 2
 end
