@@ -60,13 +60,13 @@ julia> trace_test(h)
 ```
 
 ### Membership test
-The pseduo-witness set constitutes a powerful implicit representation of the hypersurface. For instance, we can test membership by moving the pseudowitness line so that it passes through the candidate point, and check if the pseudowitness points converge to the candidate.
+The pseduo-witness set constitutes a powerful implicit representation of the hypersurface. For instance, we can test membership with the `in` command (with alias `∈` and `membership`) by moving the pseudowitness line so that it passes through the candidate point, and check if the pseudowitness points converge to the candidate.
 
 ```julia-repl
-julia> contains(h, [2, 1])
+julia> [2, 1] ∈ h
 true
 
-julia> containts(h, [1, 1])
+julia> [1, 1] ∈ h
 false
 ```
 
