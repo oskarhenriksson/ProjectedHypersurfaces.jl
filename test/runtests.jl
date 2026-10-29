@@ -408,6 +408,8 @@ end;
     h = ProjectedHypersurface(F, [a, b])
 
     @test contains(h, [2.0, 1.0])
+    @test [2.0, 1.0] ∈ h
+    @test membership([2.0, 1.0], h)
     @test !contains(h, [3.0, 1.0])
     @test_throws ArgumentError contains(h, [2.0])
 
