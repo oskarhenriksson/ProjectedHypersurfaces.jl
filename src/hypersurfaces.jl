@@ -3,6 +3,7 @@ evaluate,
 gradient,
 hessian,
 degree,
+membership,
 trace_test,
 sample_points,
 decompose,
@@ -119,7 +120,7 @@ function Base.contains(
     false
 end
 Base.in(p, h::ProjectedHypersurface; kwargs...) = Base.contains(h, p; kwargs...)
-Base.membership(p, h::ProjectedHypersurface; kwargs...) = Base.contains(h, p; kwargs...)
+membership(p, h::ProjectedHypersurface; kwargs...) = Base.contains(h, p; kwargs...)
 
 function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     PWS, GC = h.PWS, h.GC
