@@ -80,8 +80,7 @@ function _setup_monodromy_solver(
     H = RoutingPointsHomotopy(∇r, p1, q1)
 
     ### Use monodromy to the system ∇r = rhs0 where we view the right-hand side are the parameters of the system
-    egtracker = EndgameTracker(H)
-    trackers = [egtracker]
+    trackers = [EndgameTracker(H)]
     x₀ = zeros(ComplexF64, size(H, k))
 
     unique_points = UniquePoints(x₀, 1;)
@@ -205,7 +204,9 @@ function _expand_start_solutions(
             prob = SciMLBase.ODEProblem(g, start_pt, tspan)
             sol = DE.solve(prob, reltol = 1e-6, abstol = 1e-6)
             convergence_point = last(sol.u)
-            improved_point = newton(∇r, convergence_point) |> solution
+            refinement = newton(∇r, convergence_point)
+            HC.is_success(refinement) || continue # skip points for which Newton didn't converge
+            improved_point = solution(refinement)
             push!(new_pts, improved_point)
             gradient_success_count += 1                
         catch e
