@@ -18,7 +18,7 @@ struct PseudoWitnessSet{TF<:System,T<:Number,TT}
     generic_witness_set::WitnessSet # WitnessSet for the upstairs variety
     W::Vector{Vector{ComplexF64}} # Unprojected witness points
     πW::Vector{Vector{ComplexF64}} # Projections of the upstairs witness points (without duplicates)
-    tZ::Vector{Vector{ComplexF64}} # Restricted coordinates of the witness points used for tracking (one per fiber)
+    tZ::Vector{Vector{ComplexF64}} # Points [t; Z] such that F([L.point + t * L.direction; Z]) = 0 used for tracking (one per fiber)
     tracker::TT
     track_report::Vector{Bool}
 end
@@ -195,6 +195,24 @@ function decompose(PWS::PseudoWitnessSet)
     return new_pwss
 end
 
+# Helper function for tracking PWS points (also used in gradient_cache.jl)
+function _track_fiber_from!(dest, PWS::PseudoWitnessSet, starts, p_start, p_target)
+    tracker = PWS.tracker
+    start_parameters!(tracker, p_start)
+    target_parameters!(tracker, p_target)
+    succeeded = true
+    regular = true
+    for (i, start) in enumerate(starts)
+        code = HC.track!(tracker, start, 1)
+        copyto!(dest[i], tracker.state.solution)
+        ok = HC.is_success(code) && all(isfinite, dest[i])
+        PWS.track_report[i] = ok
+        succeeded &= ok
+        regular &= ok && !tracker.state.singular
+    end
+    (; succeeded, regular)
+end
+
 
 @doc raw"""
     track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
@@ -205,19 +223,15 @@ it passes through `p` and track the pseudo-witness points.
 The resulting points are stored in `u` and the success of each track is recorded in `PWS.track_report`.
 
 """
-function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
-    tracker = PWS.tracker
-    target_parameters!(tracker, p)
-    # PWS.tZ contains the coordinates (t,Z) for the points where the line
-    # (PWS.L.direction*t+PWS.L.point; Z) intersects V(F)
-    for (l, w) in enumerate(PWS.tZ)
-            HC.track!(tracker, w, 1)
-            copyto!(u[l], tracker.tracker.state.x)
-            PWS.track_report[l] = all(isfinite, u[l]) # note if the track was successful or not
-    end
 
+function track!(u::Vector{Vector{ComplexF64}}, PWS::PseudoWitnessSet, p::AbstractVector)
+    # A direct PWS track starts from the defining witness slice 
+    # even if warm continuation has changed the start parameters of the tracker
+    _track_fiber_from!(u, PWS, PWS.tZ, PWS.L.point, p)
     nothing
 end
+
+
 
 function get_s_and_Uvals!(Uvals, S, GC, PWS)
     k = n_projection_variables(PWS)
