@@ -3,6 +3,7 @@ evaluate,
 gradient,
 hessian,
 degree,
+membership,
 trace_test,
 sample_points,
 decompose,
@@ -86,9 +87,9 @@ function decompose(h::ProjectedHypersurface)
 end
 
 
-function Base.contains(
-    h::ProjectedHypersurface,
-    p::AbstractVector;
+function Base.in(
+    p::AbstractVector,
+    h::ProjectedHypersurface;
     atol = sqrt(eps(Float64)),
     residual_atol = atol,
 )
@@ -118,6 +119,7 @@ function Base.contains(
 
     false
 end
+membership(p, h::ProjectedHypersurface; kwargs...) = Base.in(p, h; kwargs...)
 
 function evaluate(h::ProjectedHypersurface{TC}, x, p = nothing) where {TC}
     PWS, GC = h.PWS, h.GC

@@ -183,6 +183,17 @@ function generate_plot(
     xlims = nothing,
     ylims = nothing
 )
+
+    if isnothing(xlims)
+        xs = first.(routing_points)
+        xlims = (minimum(xs) - 1, maximum(xs) + 1)
+    end 
+    if isnothing(ylims)
+        ys = last.(routing_points)
+        ylims = (minimum(ys) - 1, maximum(ys) + 1)
+    end
+
+
     ∇r = RoutingGradient(r)
 
     has_root_count_source = !isnothing(root_count_fn) || !isnothing(root_counting_system)
