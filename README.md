@@ -5,14 +5,14 @@
 
 This package implements **numerical elimination** techniques for real algebraic hypersurfaces that arise as the Zariski closure of the projection of a variety with known defining equations. 
 
-The key concept from numerical algebraic geometry that underlies the package is that of **pseudo-witness sets**. For an accessible introduction, as well as some new results on which this package builds, see the recent preprint [Elimination Without Eliminating: Computing Complements of Real Hypersurfaces Using Pseudo-Witness Sets](https://arxiv.org/abs/2601.04383) by Paul Breiding, John Cobb, Aviva Englander, Nayda Farnsworth, Jon Hauenstein, Oskar Henriksson, David Johnson, Jordy Lopez Garcia, and Deepak Mundayur (2026).
+The key concept from numerical algebraic geometry that underlies the package is that of **pseudo-witness sets**. For an accessible introduction, as well as some new results on which this package builds, see the recent preprint [Numerical Elimination: Computing Complements of Real Hypersurfaces Using Pseudo-Witness Sets](https://arxiv.org/abs/2601.04383) by Paul Breiding, John Cobb, Aviva Englander, Nayda Farnsworth, Jon Hauenstein, Oskar Henriksson, David Johnson, Jordy Lopez Garcia, and Deepak Mundayur (2026).
 
 > [!NOTE]
-> This package is under active early development. Interfaces and behavior may change as the package evolves. In particular, no formal versioned releases are not available yet. For reproducible use, consider pinning to a specific git commit. If you encounter bugs, have questions or want to propose features, feel free to raise an [issue](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/issues) or reach out directly to one of the authors.
+> This package is under active early development. Interfaces and behavior may change as the package evolves. In particular, no versioned releases are available yet. For reproducible use, consider pinning to a specific git commit. If you encounter bugs, have questions or want to propose features, feel free to raise an [issue](https://github.com/oskarhenriksson/ProjectedHypersurfaces.jl/issues) or reach out directly to one of the authors.
 
 ## Installation
 
-You can install the package directly from the github repository as follows:
+You can install the package directly from the repository as follows:
 
 ```julia-repl
 julia> using Pkg
@@ -34,7 +34,7 @@ f_{a,b}(x)=x^2+ax+b
 ``` 
 with parameters $a$ and $b$.
 
-We start by setting up the incidence variety $`\{(a,b,x)\in ℂ^3\mid f_{a,b}(x)=f′_{a,b}(x)=0\}`$ of the discriminant, which we use to form a `ProjectedHypersurface` that represents the discrimiminant via a pseudo-witness set.
+We start by setting up the incidence variety $`\{(a,b,x)\in ℂ^3\mid f_{a,b}(x)=f′_{a,b}(x)=0\}`$ of the discriminant, which we use to form a `ProjectedHypersurface` that represents the discriminant via a pseudo-witness set.
 
 ```julia-repl
 julia> @var a b x;
@@ -52,7 +52,7 @@ julia> degree(h)
 ```
 
 ### Trace test
-To verify the completeness of the pseudowitness set (and hence the correctness of the degree), we can run a *trace test*. Theoretically, this value is zero if and only if the pseudowitness set is complete. Hence, a value close to machine precision is strong evidence (albeit not a certificate) of completeness.
+To verify the completeness of the pseudowitness set (and hence the correctness of the degree), we can run a *trace test*. Theoretically, and for each irreducible component of the hypersurface, this value is zero if and only if the pseudowitness set is complete. Hence, a value close to machine precision is strong evidence (albeit not a certificate) of completeness.
 
 ```julia-repl
 julia> trace_test(h)
@@ -60,18 +60,18 @@ julia> trace_test(h)
 ```
 
 ### Membership test
-The pseduo-witness set constitutes a powerful implicit representation of the hypersurface. For instance, we can test membership by moving the pseudowitness line so that it passes through the candidate point, and check if the pseudowitness points converge to the candidate.
+The pseudo-witness set constitutes a powerful implicit representation of the hypersurface. For instance, we can test membership with the `in` command (with alias `∈` and `membership`) by moving the pseudowitness line so that it passes through the candidate point, and check if the pseudowitness points converge to the candidate.
 
 ```julia-repl
-julia> contains(h, [2, 1])
+julia> [2, 1] ∈ h
 true
 
-julia> containts(h, [1, 1])
+julia> [1, 1] ∈ h
 false
 ```
 
 ### Sampling
-By moving around the pseudowitness line, we can easilly obtain a large set of sample points from the hypersurface.
+By moving around the pseudowitness line, we can easily obtain a large set of sample points from the hypersurface.
 
 ```julia-repl
 julia> sample_points(h, 10)
@@ -108,25 +108,25 @@ We can do a numerical irreducible decomposition of the hypersurfaces. For instan
 
 ```julia-repl
 julia> @var a b x;
-julia> f = b + a*x + 2*a*x^4 + a^2*x^3 + 2*b*x^3 + b^2*x + 2*a*b*x^2 + x^2 + x^5;
+julia> f = (x^2 + a*x + b) * (x^3 + a*x^2 + b*x + 1);
 julia> F = System([f, differentiate(f, x)], variables=[a, b, x]);
-julia> h = ProjectedHypersurface(F, [a, b])
+julia> h_reducible = ProjectedHypersurface(F, [a, b])
 Projected hypersurface of degree 6 in ambient dimension 2
 
-julia> irreducible_components = decompose(h)
+julia> irreducible_components = decompose(h_reducible)
 2-element Vector{ProjectedHypersurface}:
  Projected hypersurface of degree 4 in ambient dimension 2
  Projected hypersurface of degree 2 in ambient dimension 2
 
 julia> polynomial.(interpolate.(irreducible_components))
 2-element Vector{Expression}:
-                            -4*b + a^2
  27 - 18*a*b - a^2*b^2 + 4*a^3 + 4*b^3
+                            -4*b + a^2 
 
 ```
 
 ### Evaluation
-We can use `h` to evaluate (up to a constant) the logarithm of the defining polynomial of the discriminant, as well as the gradient and Hessian. 
+We can use `h` to evaluate (up to an additive constant) *the logarithm of the absolute value* of the defining polynomial of the discriminant, as well as the gradient and Hessian of the logarithm of the absolute value. 
 
 ```julia-repl
 julia> p = [1, 1];
@@ -255,4 +255,4 @@ The code relies on the following Julia packages:
 - `LightGraphs.jl` (for building the connectivity graph).
 
 ## Statement on AI use
-This repository was developed with the assistance of AI tools, including large language models such as Codex and and GitHub Copilot, which have been used to assist with tasks such as code review, memory allocation optimization, documentaiton, and minor code generation for routine tasks. The authors have reviewed, edited, and verified the outputs from these tools, and take full responsibility for the correctness.
+This repository was developed with the assistance of AI tools, including large language models such as Codex and GitHub Copilot, which have been used to assist with tasks such as code review, memory allocation optimization, documentation, and minor code generation for routine tasks. The authors have reviewed, edited, and verified the outputs from these tools, and take full responsibility for the correctness.
